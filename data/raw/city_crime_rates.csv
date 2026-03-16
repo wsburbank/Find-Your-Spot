@@ -1,0 +1,349 @@
+city_crime_key,city_violent_crime_rate,city_property_crime_rate,city_total_crime_rate
+"Birmingham, AL",12.8,45.2,58.0
+"Montgomery, AL",8.9,38.5,47.4
+"Mobile, AL",7.2,35.8,43.0
+"Huntsville, AL",5.8,32.1,37.9
+"Tuscaloosa, AL",6.4,36.2,42.6
+"Hoover, AL",1.8,22.4,24.2
+"Anchorage, AK",10.2,38.5,48.7
+"Fairbanks, AK",7.8,32.1,39.9
+"Juneau, AK",5.2,28.4,33.6
+"Phoenix, AZ",7.1,32.8,39.9
+"Tucson, AZ",6.8,38.2,45.0
+"Mesa, AZ",3.8,24.5,28.3
+"Scottsdale, AZ",1.5,19.8,21.3
+"Chandler, AZ",1.9,18.2,20.099999999999998
+"Gilbert, AZ",0.9,12.5,13.4
+"Glendale, AZ",4.8,28.9,33.699999999999996
+"Tempe, AZ",4.2,35.8,40.0
+"Peoria, AZ",1.6,16.8,18.400000000000002
+"Flagstaff, AZ",4.5,28.2,32.7
+"Yuma, AZ",4.2,22.8,27.0
+"Sedona, AZ",1.2,15.2,16.4
+"Little Rock, AR",13.5,52.8,66.3
+"Fort Smith, AR",6.8,38.5,45.3
+"Fayetteville, AR",3.8,28.2,32.0
+"Springdale, AR",3.2,24.5,27.7
+"Bentonville, AR",1.2,18.5,19.7
+"Los Angeles, CA",7.5,28.2,35.7
+"San Diego, CA",3.6,18.5,22.1
+"San Jose, CA",3.8,22.8,26.6
+"San Francisco, CA",6.2,45.8,52.0
+"Fresno, CA",5.8,32.5,38.3
+"Sacramento, CA",5.2,28.9,34.1
+"Oakland, CA",12.8,52.4,65.2
+"Long Beach, CA",5.8,25.8,31.6
+"Bakersfield, CA",5.2,28.5,33.7
+"Anaheim, CA",2.8,22.5,25.3
+"Santa Ana, CA",3.5,18.9,22.4
+"Riverside, CA",4.2,24.8,29.0
+"Stockton, CA",8.5,35.2,43.7
+"Irvine, CA",0.6,12.8,13.4
+"Fremont, CA",1.8,18.2,20.0
+"San Bernardino, CA",9.8,38.5,48.3
+"Modesto, CA",6.2,32.8,39.0
+"Santa Barbara, CA",2.8,22.5,25.3
+"Palm Springs, CA",4.5,32.8,37.3
+"Santa Rosa, CA",3.2,24.5,27.7
+"Berkeley, CA",5.8,42.5,48.3
+"Pasadena, CA",3.2,22.8,26.0
+"Burbank, CA",2.1,24.2,26.3
+"Glendale, CA",1.8,18.5,20.3
+"Denver, CO",6.8,42.5,49.3
+"Colorado Springs, CO",5.2,32.8,38.0
+"Aurora, CO",5.8,35.2,41.0
+"Fort Collins, CO",2.5,22.8,25.3
+"Boulder, CO",2.8,28.5,31.3
+"Pueblo, CO",8.5,42.8,51.3
+"Lakewood, CO",3.2,28.5,31.7
+"Arvada, CO",1.8,18.5,20.3
+"Aspen, CO",1.2,22.5,23.7
+"Hartford, CT",7.8,25.8,33.6
+"New Haven, CT",8.2,28.5,36.7
+"Bridgeport, CT",6.5,22.8,29.3
+"Stamford, CT",1.8,12.5,14.3
+"Waterbury, CT",5.2,22.5,27.7
+"Norwalk, CT",1.5,14.2,15.7
+"Wilmington, DE",9.8,32.5,42.3
+"Dover, DE",4.5,28.2,32.7
+"Newark, DE",2.8,22.5,25.3
+"Miami, FL",6.2,32.5,38.7
+"Orlando, FL",5.8,35.8,41.599999999999994
+"Tampa, FL",4.5,22.8,27.3
+"Jacksonville, FL",5.8,28.5,34.3
+"Fort Lauderdale, FL",5.2,35.2,40.400000000000006
+"St. Petersburg, FL",4.8,25.8,30.6
+"Hialeah, FL",2.8,18.5,21.3
+"Tallahassee, FL",6.2,32.8,39.0
+"Gainesville, FL",4.5,32.5,37.0
+"Fort Myers, FL",4.2,28.5,32.7
+"Sarasota, FL",2.8,22.8,25.6
+"Naples, FL",1.2,12.8,14.0
+"Pensacola, FL",5.2,32.5,37.7
+"Key West, FL",3.8,28.2,32.0
+"Boca Raton, FL",1.5,15.8,17.3
+"Atlanta, GA",8.5,42.8,51.3
+"Augusta, GA",5.8,35.2,41.0
+"Columbus, GA",5.2,32.5,37.7
+"Savannah, GA",5.5,35.8,41.3
+"Macon, GA",7.2,42.5,49.7
+"Athens, GA",3.2,28.5,31.7
+"Alpharetta, GA",0.8,12.5,13.3
+"Marietta, GA",3.5,25.8,29.3
+"Roswell, GA",1.2,15.2,16.4
+"Honolulu, HI",2.5,32.8,35.3
+"Hilo, HI",3.2,28.5,31.7
+"Kailua, HI",1.2,18.5,19.7
+"Boise, ID",2.8,18.5,21.3
+"Meridian, ID",1.2,12.8,14.0
+"Nampa, ID",2.5,18.2,20.7
+"Idaho Falls, ID",2.2,15.8,18.0
+"Pocatello, ID",2.8,18.5,21.3
+"Coeur d'Alene, ID",2.2,18.8,21.0
+"Chicago, IL",7.8,25.8,33.6
+"Aurora, IL",2.8,15.8,18.6
+"Naperville, IL",0.6,8.5,9.1
+"Rockford, IL",7.5,28.5,36.0
+"Joliet, IL",3.5,18.2,21.7
+"Springfield, IL",5.8,32.8,38.599999999999994
+"Peoria, IL",6.8,32.5,39.3
+"Champaign, IL",4.8,28.2,33.0
+"Evanston, IL",2.2,22.5,24.7
+"Indianapolis, IN",8.5,35.8,44.3
+"Fort Wayne, IN",4.2,22.5,26.7
+"Evansville, IN",4.5,28.2,32.7
+"South Bend, IN",6.2,32.5,38.7
+"Carmel, IN",0.5,8.2,8.7
+"Fishers, IN",0.6,9.5,10.1
+"Bloomington, IN",3.2,22.8,26.0
+"Hammond, IN",5.8,28.5,34.3
+"Des Moines, IA",5.2,28.5,33.7
+"Cedar Rapids, IA",3.5,22.8,26.3
+"Davenport, IA",5.8,32.5,38.3
+"Sioux City, IA",4.2,25.8,30.0
+"Iowa City, IA",2.8,18.5,21.3
+"Waterloo, IA",5.5,28.2,33.7
+"Wichita, KS",6.8,35.8,42.599999999999994
+"Kansas City, KS",7.5,38.5,46.0
+"Topeka, KS",6.2,35.2,41.400000000000006
+"Olathe, KS",1.2,12.5,13.7
+"Overland Park, KS",1.5,15.8,17.3
+"Lawrence, KS",2.8,22.5,25.3
+"Louisville, KY",5.8,28.5,34.3
+"Lexington, KY",3.2,22.8,26.0
+"Bowling Green, KY",3.5,25.2,28.7
+"Owensboro, KY",2.8,18.5,21.3
+"Covington, KY",4.2,28.5,32.7
+"New Orleans, LA",12.5,38.5,51.0
+"Baton Rouge, LA",8.8,42.5,51.3
+"Shreveport, LA",9.2,45.8,55.0
+"Lafayette, LA",4.8,32.5,37.3
+"Lake Charles, LA",5.2,28.5,33.7
+"Monroe, LA",6.8,35.2,42.0
+"Portland, ME",2.2,18.5,20.7
+"Lewiston, ME",2.8,15.8,18.6
+"Bangor, ME",2.5,18.2,20.7
+"Augusta, ME",1.8,15.5,17.3
+"Baltimore, MD",12.8,32.5,45.3
+"Frederick, MD",1.8,15.8,17.6
+"Rockville, MD",1.5,12.8,14.3
+"Annapolis, MD",3.2,22.5,25.7
+"Hagerstown, MD",4.5,28.2,32.7
+"Boston, MA",5.2,18.5,23.7
+"Worcester, MA",4.8,18.2,23.0
+"Springfield, MA",7.8,22.5,30.3
+"Cambridge, MA",2.2,22.8,25.0
+"Lowell, MA",4.2,18.5,22.7
+"New Bedford, MA",5.5,22.8,28.3
+"Detroit, MI",18.5,42.8,61.3
+"Grand Rapids, MI",4.5,22.5,27.0
+"Ann Arbor, MI",2.2,18.8,21.0
+"Lansing, MI",6.8,28.5,35.3
+"Flint, MI",15.2,35.8,51.0
+"Kalamazoo, MI",5.8,32.5,38.3
+"Traverse City, MI",1.8,15.2,17.0
+"Saginaw, MI",9.8,32.8,42.599999999999994
+"Minneapolis, MN",7.8,35.8,43.599999999999994
+"St. Paul, MN",5.2,28.5,33.7
+"Rochester, MN",1.5,12.8,14.3
+"Duluth, MN",3.8,22.5,26.3
+"Bloomington, MN",1.8,18.2,20.0
+"St. Cloud, MN",3.2,22.8,26.0
+"Jackson, MS",9.8,42.5,52.3
+"Gulfport, MS",4.2,28.5,32.7
+"Hattiesburg, MS",4.5,25.8,30.3
+"Biloxi, MS",4.8,28.2,33.0
+"Tupelo, MS",3.2,22.5,25.7
+"Kansas City, MO",10.2,42.8,53.0
+"St. Louis, MO",15.8,48.5,64.3
+"Springfield, MO",6.8,38.5,45.3
+"Columbia, MO",4.2,28.5,32.7
+"Independence, MO",5.8,32.5,38.3
+"Lee's Summit, MO",1.5,15.8,17.3
+"Billings, MT",5.8,32.5,38.3
+"Missoula, MT",4.2,28.8,33.0
+"Great Falls, MT",4.5,28.2,32.7
+"Bozeman, MT",1.8,18.5,20.3
+"Helena, MT",3.2,22.5,25.7
+"Omaha, NE",4.8,25.8,30.6
+"Lincoln, NE",3.2,22.5,25.7
+"Bellevue, NE",1.5,12.8,14.3
+"Grand Island, NE",2.8,18.5,21.3
+"Las Vegas, NV",6.2,28.5,34.7
+"Henderson, NV",1.8,15.8,17.6
+"Reno, NV",5.5,32.8,38.3
+"North Las Vegas, NV",5.8,25.2,31.0
+"Sparks, NV",3.8,25.5,29.3
+"Manchester, NH",3.2,18.5,21.7
+"Nashua, NH",1.5,12.8,14.3
+"Concord, NH",1.8,15.2,17.0
+"Portsmouth, NH",0.8,12.5,13.3
+"Newark, NJ",6.8,22.5,29.3
+"Jersey City, NJ",3.2,15.8,19.0
+"Paterson, NJ",5.8,18.2,24.0
+"Trenton, NJ",8.5,28.5,37.0
+"Camden, NJ",12.8,35.8,48.599999999999994
+"Elizabeth, NJ",4.2,18.5,22.7
+"Princeton, NJ",0.5,8.5,9.0
+"Albuquerque, NM",10.8,48.5,59.3
+"Las Cruces, NM",4.8,28.5,33.3
+"Santa Fe, NM",4.2,32.8,37.0
+"Rio Rancho, NM",2.8,22.5,25.3
+"Roswell, NM",5.2,28.2,33.4
+"New York City, NY",3.8,14.2,18.0
+"Buffalo, NY",8.5,28.5,37.0
+"Rochester, NY",7.8,32.5,40.3
+"Syracuse, NY",5.8,25.8,31.6
+"Albany, NY",5.2,22.8,28.0
+"Yonkers, NY",2.8,12.5,15.3
+"Ithaca, NY",1.5,15.8,17.3
+"Saratoga Springs, NY",0.8,12.2,13.0
+"Charlotte, NC",6.8,32.5,39.3
+"Raleigh, NC",3.8,25.8,29.6
+"Greensboro, NC",5.2,32.8,38.0
+"Durham, NC",5.5,32.5,38.0
+"Winston-Salem, NC",5.8,32.2,38.0
+"Fayetteville, NC",6.2,35.8,42.0
+"Wilmington, NC",4.2,28.5,32.7
+"Asheville, NC",4.8,35.2,40.0
+"Cary, NC",0.8,10.5,11.3
+"Fargo, ND",3.2,28.5,31.7
+"Bismarck, ND",2.5,22.8,25.3
+"Grand Forks, ND",2.8,25.2,28.0
+"Minot, ND",2.2,22.5,24.7
+"Columbus, OH",5.2,28.5,33.7
+"Cleveland, OH",9.8,32.8,42.599999999999994
+"Cincinnati, OH",6.8,35.2,42.0
+"Toledo, OH",6.2,28.5,34.7
+"Akron, OH",5.5,32.5,38.0
+"Dayton, OH",7.8,38.5,46.3
+"Youngstown, OH",8.5,35.8,44.3
+"Canton, OH",5.2,28.2,33.4
+"Oklahoma City, OK",7.2,38.5,45.7
+"Tulsa, OK",7.8,42.8,50.599999999999994
+"Norman, OK",3.2,25.8,29.0
+"Broken Arrow, OK",1.8,18.5,20.3
+"Edmond, OK",1.5,15.2,16.7
+"Lawton, OK",5.8,32.5,38.3
+"Portland, OR",5.2,42.8,48.0
+"Salem, OR",3.8,32.5,36.3
+"Eugene, OR",3.5,35.8,39.3
+"Gresham, OR",3.2,28.5,31.7
+"Bend, OR",1.8,22.5,24.3
+"Medford, OR",3.5,32.8,36.3
+"Beaverton, OR",1.5,18.5,20.0
+"Hillsboro, OR",1.2,15.8,17.0
+"Philadelphia, PA",7.8,22.5,30.3
+"Pittsburgh, PA",5.2,22.8,28.0
+"Allentown, PA",4.5,18.5,23.0
+"Erie, PA",4.8,22.5,27.3
+"Reading, PA",6.8,25.8,32.6
+"Scranton, PA",3.2,18.2,21.4
+"Harrisburg, PA",6.2,25.5,31.7
+"Lancaster, PA",4.5,22.8,27.3
+"State College, PA",1.2,12.5,13.7
+"Providence, RI",4.2,18.5,22.7
+"Warwick, RI",1.5,12.8,14.3
+"Cranston, RI",1.8,14.2,16.0
+"Charleston, SC",4.8,28.5,33.3
+"Columbia, SC",7.8,42.5,50.3
+"Greenville, SC",5.2,32.8,38.0
+"Myrtle Beach, SC",6.8,45.8,52.599999999999994
+"Spartanburg, SC",8.2,38.5,46.7
+"Hilton Head, SC",1.2,15.8,17.0
+"Sioux Falls, SD",4.5,22.8,27.3
+"Rapid City, SD",5.2,28.5,33.7
+"Aberdeen, SD",2.2,15.8,18.0
+"Nashville, TN",8.2,35.8,44.0
+"Memphis, TN",15.5,52.8,68.3
+"Knoxville, TN",5.8,32.5,38.3
+"Chattanooga, TN",7.2,38.5,45.7
+"Clarksville, TN",4.5,25.8,30.3
+"Murfreesboro, TN",3.8,28.2,32.0
+"Houston, TX",8.2,42.5,50.7
+"San Antonio, TX",6.8,38.5,45.3
+"Dallas, TX",7.5,35.8,43.3
+"Austin, TX",4.2,32.8,37.0
+"Fort Worth, TX",5.2,28.5,33.7
+"El Paso, TX",3.2,18.5,21.7
+"Arlington, TX",3.8,28.2,32.0
+"Corpus Christi, TX",5.8,32.5,38.3
+"Plano, TX",1.2,15.8,17.0
+"Lubbock, TX",6.2,35.8,42.0
+"Laredo, TX",3.5,22.5,26.0
+"Irving, TX",2.8,22.8,25.6
+"Amarillo, TX",5.8,38.5,44.3
+"Brownsville, TX",2.8,18.5,21.3
+"McKinney, TX",1.2,12.5,13.7
+"Frisco, TX",0.8,10.5,11.3
+"Midland, TX",4.5,28.2,32.7
+"Waco, TX",5.2,32.5,37.7
+"Salt Lake City, UT",5.2,42.8,48.0
+"Provo, UT",1.2,15.8,17.0
+"West Valley City, UT",3.8,28.5,32.3
+"Ogden, UT",4.5,32.5,37.0
+"St. George, UT",1.5,18.2,19.7
+"Sandy, UT",1.2,15.5,16.7
+"Park City, UT",0.8,18.5,19.3
+"Logan, UT",1.2,12.8,14.0
+"Burlington, VT",2.2,18.5,20.7
+"Montpelier, VT",0.8,12.2,13.0
+"Rutland, VT",2.5,15.8,18.3
+"Virginia Beach, VA",1.8,18.5,20.3
+"Norfolk, VA",4.5,25.8,30.3
+"Richmond, VA",5.8,28.5,34.3
+"Chesapeake, VA",2.2,18.2,20.4
+"Arlington, VA",1.2,18.5,19.7
+"Newport News, VA",4.2,25.2,29.4
+"Alexandria, VA",2.5,22.8,25.3
+"Hampton, VA",3.8,22.5,26.3
+"Roanoke, VA",4.5,28.2,32.7
+"Charlottesville, VA",3.2,22.5,25.7
+"Lynchburg, VA",3.5,22.8,26.3
+"Seattle, WA",5.8,42.5,48.3
+"Spokane, WA",5.5,38.5,44.0
+"Tacoma, WA",5.2,35.8,41.0
+"Vancouver, WA",3.2,28.5,31.7
+"Bellevue, WA",1.2,18.5,19.7
+"Everett, WA",4.2,32.8,37.0
+"Olympia, WA",3.5,28.2,31.7
+"Bellingham, WA",2.8,28.5,31.3
+"Yakima, WA",4.8,32.5,37.3
+"Charleston, WV",4.8,22.5,27.3
+"Huntington, WV",5.2,25.8,31.0
+"Morgantown, WV",2.2,18.5,20.7
+"Wheeling, WV",3.5,18.2,21.7
+"Parkersburg, WV",3.2,18.5,21.7
+"Milwaukee, WI",8.5,28.5,37.0
+"Madison, WI",2.8,22.8,25.6
+"Green Bay, WI",3.2,18.5,21.7
+"Kenosha, WI",3.5,22.5,26.0
+"Racine, WI",5.2,25.8,31.0
+"Appleton, WI",1.5,12.8,14.3
+"La Crosse, WI",2.2,18.2,20.4
+"Eau Claire, WI",2.5,18.5,21.0
+"Cheyenne, WY",3.2,22.5,25.7
+"Casper, WY",3.5,22.8,26.3
+"Laramie, WY",2.8,18.5,21.3
+"Gillette, WY",2.5,18.2,20.7
+"Rock Springs, WY",3.2,22.5,25.7

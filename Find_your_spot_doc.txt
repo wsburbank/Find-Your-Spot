@@ -1,0 +1,99 @@
+I want to recreate a website that asked users about twenty questions about their living prefferences (town size, ammenities, climate, activities available)
+And then recommends 10 cities that score highest for matching.
+
+I would like to develope a plan to vibe code this app using Streamlit for the UI.
+I believe claude will need to create an agent to search the internet for relevent information to score different areas.
+Help come up with questions that are fun and help narrow down a users prefferences.  Each question should have the ability to select all or none.
+The result of the quiz should present a map with the highest ranking cities diplayed.
+
+Below is the description from the origianl site.
+FindYourSpot is the best way to discover your perfect hometown... 
+just tell us your ideal and we’ll find the best candidates for you. 
+We don’t have the bias of your Aunt LuLu, we don’t have mounds of useless data for you to sort through, 
+and we don’t have the gall of "best places" lists that tell you what your priorities are. 
+What we do have is the most accurate automated recommendation system and the most pertinent information 
+on the places we recommend. It’s simple, it’s fun, and it works.
+	Do you like a lot of sunny weather? 
+    Do you want to live near a college? 
+    Do you like spending time at the zoo—as a visitor? 
+    Tell us what you want in your perfect hometown by taking our quick, fun quiz, and we’ll find the place for you! 
+    The quiz is designed to focus on the issues that are really important to you—climate, crime rates, 
+    recreational opportunities, community resources ... even the types of geography that you like! 
+    The quiz covers just about everything except how much you enjoy coconut swirl ice cream....
+	Our state-of-the-art program instantly compares your quiz answers with our huge database of information 
+    about America’s best towns and cities, creating your own customized list of great places to live. 
+    We don’t restrict you to large metropolitan areas, or the same old places that you see on every 
+    "best places" list. And we don’t presume to know exactly what’s best for you. We narrow things 
+    down for you and then provide a wealth of pertinent information, from pictures and climate data to an 
+    interesting bit of trivia. And that’s all before you’ve even read the reports....
+	Dig even deeper by downloading our beautifully designed reports on each city. 
+    Each four-page report goes beyond the "just-the-facts-ma'am" attitude you'll find at other sites, 
+    and captures the unique essence of each city. These aren't just dry statistics; these are real people 
+    giving you a real idea of what it's like to live in each town or city. We know that we can't make the 
+    final decision for you -- even with our great quiz -- so we give you an idea of what it's like to really 
+    live in these places. And when you find the perfect spot for you, we've got the Internet's best online job 
+    search to help you find a great new job, plus immediate access to homes for sale in Your Top Spots, great 
+    travel deals AND connections with real estate pros that let you call the shots. You'll find all of this 
+    information together in one central location, saving you time and money, making FindYourSpot the best 
+    relocation recommendation service in the country.
+
+
+Luckily, these six websites round up the best cities and towns around the world to help you find your spot.
+
+1. Niche
+Niche Best Places to Live Website
+Niche is a great way to find ratings and reviews for towns, school districts, colleges, and neighborhoods. Unfortunately, the site only works for locations in the United States. If you are wondering, "where should I move to in the US?" Niche is an excellent tool for you.
+
+This site offers a variety of ways to find the perfect place to live. To search for a certain town or neighborhood, head to the two search bars at the top of the screen. In the search bar that starts with Find, enter what you're looking for. You can then type in the town or state in the search bar that starts with In.
+
+Once you start your search, Niche will display the best places to live in a specific location. Each town and neighborhood receive a grade, the worst being F and the best being A+.
+
+To go alongside the grade, Niche compiles tons of data to rate these towns—it provides you with an overall grade, as well as separate grades for schools, housing, safety, diversity, nightlife, and more.
+
+2. Livability
+Livability Best Places to Live Website
+In addition to giving you an in-depth profile of cities around the United States, Livability also gives you basic statistics. Scroll down the page, and you'll see a breakdown of the city's population, as well as charts relating to race, gender, language, economics, and commute types.
+
+To find out even more about a city, you can click one of the categories under Topics in the left sidebar. Here, you'll find articles about things to do and photos of the city. You can also view information about the real estate market, work environment, schools, and health systems.
+
+If you have no idea how to find a place to live, you can use Livability's database of helpful articles about different cities and states to get you started.
+
+3. AreaVibes
+areavibes.com - Profile of Plano TX
+AreaVibes ranks cities from one to 100, with 100 as the best score a place can get. It uses an algorithm that takes the cost of living, crime rate, work opportunities, weather, real estate, and education into account to create an overall score, making it an excellent alternative for finding your spot.
+
+The site houses over 35,000 rankings for cities and neighborhoods in the United States. To get started, type in a specific address, state, city, or neighborhood in the search bar on the home page. AreaVibes will pull up your town, along with nearby towns that have a high score.
+
+Once you click on the town you're considering, you'll see an overall score and grades on a variety of subcategories. Scroll down the page to find houses for sale, as well as detailed information about expenses, income, crime, and education quality.
+
+4. Teleport
+Teleport Best Places to Live Website
+If you're wondering, "How can I find my spot to live if I'm searching for places outside of the United States?" Don't worry—Teleport is the site to help you find a new place to live.
+
+To begin your search, click the Start Exploring button on the home page. Teleport will then ask you a series of questions about your preferences and current lifestyle. After entering your job status, budget, current income, and other information, Teleport will compile a list of the best cities for you to live in.
+
+All the cities should fit into your budget and have the exact qualities you're looking for. Click on each city for even more detailed information to find the right town to live in.
+
+Teleport displays a summary of the city, quality of life scores, a cost of living chart, job salary calculator, as well as some flaws. In other words, it's a great tool to find your spot to live or travel!
+
+5. BestPlaces
+BestPlaces Best Places to Live Website
+On BestPlaces, you can find data about a city by performing a quick search. Just type in the name of a city or town, and you'll see data about the area's weather, cost of living, population, transportation, schools, and housing.
+
+At the bottom of the page, residents express their opinion and provide ratings. But perhaps the most helpful part about BestPlaces is its Cost of Living Calculator.
+
+With this tool, you can compare the cost of living in your current city to the city you're considering moving to. While the premium version of the site allows you to view renting cost comparisons, you can also compare rent rates on Rentometer.
+
+6. HomeSnacks
+HomeSnacks Best Places to Live Website
+HomeSnacks uses information from OpenStreetMap, the Census, and the FBI to create lists of some of the best cities to live in the United States
+
+To find the state, you want to move to, scroll to the bottom of the page and click on a state under the USA Cities by State heading. Selecting a state will lead you to a list of its biggest cities.
+
+On the right side of the screen, you'll see a menu with articles relating to the state. The site has lists of the state's best places, most expensive places, and cheapest places to live.
+
+Most importantly, it also has a list of the most dangerous cities (and the safest)—that way, you won't have to worry about self-defense and personal safety when you're alone.
+
+When viewing one of the lists, you just might find a town you like. You can click on the town to view more data. The site displays the town's rating (called SnackAbility) in various categories.
+
+HomeSnacks ranks towns based on housing, safety, education, amenities, commute, jobs, and affordability. You'll also see some statistics on the town's population, helping you find the best places to live in the US.

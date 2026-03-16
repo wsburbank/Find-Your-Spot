@@ -1,0 +1,41 @@
+# Core App & Data
+streamlit
+pandas>=2.2.2
+numpy>=1.26.4
+scipy
+scikit-learn
+
+# Visualization & GIS
+plotly
+streamlit-plotly-events
+streamlit-echarts5
+matplotlib
+geopandas
+pydeck
+
+# Data Sources & Databases
+sqlalchemy>=2.0.0
+pyodbc
+requests
+openpyxl
+
+# String Matching & Logic
+fuzzywuzzy
+python-Levenshtein
+orjson
+jsonschema
+
+# PDF Handling
+PyPDF2
+fpdf2
+
+# ================================================
+# Added by Claude for Stator Temperature Analysis
+# ================================================
+seaborn  # Statistical visualization for correlation heatmaps
+
+# ================================================
+# Added for Find Your Spot app
+# ================================================
+anthropic          # Claude API for optional AI vibes
+pyarrow            # Parquet file support (efficient columnar storage)
