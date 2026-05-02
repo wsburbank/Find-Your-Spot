@@ -1,0 +1,24 @@
+[logger]
+level = "info"
+
+[client]
+toolbarMode = "viewer"
+
+[server]
+enableStaticServing = true
+fileWatcherType = "poll"
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+base = "light"
+primaryColor = "#2E86AB"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F0F2F6"
+textColor = "#262730"
+baseRadius = "medium"
+showWidgetBorder = true
+showSidebarBorder = true
+font = "sans-serif"
+baseFontSize = 15
