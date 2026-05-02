@@ -104,6 +104,63 @@ Clean, normalize, and join all metric parquets into a unified city dataset.
 - Results page shows top 10 matching cities on an interactive map
 - City detail views with profiles and score breakdowns
 
+## Firecrawl (Self-Hosted)
+
+Firecrawl is used for web scraping when public APIs are not available. It runs locally in Docker.
+
+### Prerequisites
+- Docker Desktop must be running (check: `docker ps`)
+- Firecrawl repo cloned to `C:\Python_Repo\firecrawl`
+
+### One-Time Setup
+If the Firecrawl repo is not yet cloned:
+```bash
+cd /c/Python_Repo
+git clone https://github.com/mendableai/firecrawl.git
+cd firecrawl
+cp apps/api/.env.example apps/api/.env
+```
+
+### Start Firecrawl
+```bash
+# Ensure Docker Desktop is running first
+cd /c/Python_Repo/firecrawl
+docker compose up -d
+```
+Wait ~30 seconds for services to initialize. Verify with:
+```bash
+curl -s http://localhost:3002 | head -1
+```
+Or from Python:
+```python
+from utilities.firecrawl_client import is_firecrawl_available
+print(is_firecrawl_available())  # True when ready
+```
+
+### Stop Firecrawl
+```bash
+cd /c/Python_Repo/firecrawl
+docker compose down
+```
+
+### Check Status
+```bash
+docker compose -f /c/Python_Repo/firecrawl/docker-compose.yml ps
+```
+
+### Troubleshooting
+- **Docker Desktop not running:** `docker ps` returns a pipe/socket error. The user must start Docker Desktop manually (it's a GUI app).
+- **Port 3002 in use:** Check with `netstat -an | grep 3002`. Stop the conflicting service or change the port in `docker-compose.yml`.
+- **Containers crash on startup:** Check logs with `docker compose -f /c/Python_Repo/firecrawl/docker-compose.yml logs --tail 50`.
+- **All Firecrawl calls are optional.** If Docker is not running, `is_firecrawl_available()` returns `False` and scripts should fall back to direct HTTP requests or skip the scraping step.
+
+## Testing
+
+Each phase must end with tests that validate all new functionality before committing:
+- Write `pytest` tests in the `tests/` directory for every new utility, script, or data pipeline.
+- Run `python -m pytest tests/ -v` and confirm all tests pass before the phase commit.
+- Tests should cover core logic, edge cases, and round-trip data integrity — not trivial layout code.
+
 ## Tech Stack
 
 - **Python 3.13**, **Streamlit** for the UI
