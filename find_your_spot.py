@@ -21,7 +21,8 @@ st.title("Find Your Perfect City")
 st.markdown(
     """
     Discover the US cities that match your lifestyle, climate preferences, and priorities.
-    Answer a few questions and we'll recommend your top 10 city matches from 1,800+ real US cities.
+    Answer a few questions and we'll recommend your top 10 city matches from 700+ real US cities,
+    all scored with real data from the Census Bureau, NOAA, FBI, and more.
     """
 )
 
@@ -34,7 +35,12 @@ with col1:
 with col2:
     st.metric("Categories", len(get_categories()))
 with col3:
-    st.metric("Cities", "1,841")
+    try:
+        import pandas as pd
+        _cities = pd.read_parquet(Path(__file__).parent / "data" / "cities.parquet")
+        st.metric("Cities", f"{len(_cities):,}")
+    except Exception:
+        st.metric("Cities", "700+")
 
 st.divider()
 
@@ -64,7 +70,7 @@ with col1:
 with col2:
     st.markdown("### 2. Get Matched")
     st.markdown(
-        "Our algorithm scores nearly 2,000 US cities based on your preferences "
+        "Our algorithm scores over 700 real US cities based on your preferences "
         "and finds your best matches."
     )
 
@@ -93,7 +99,8 @@ with col2:
                 st.switch_page("pages/1_Quiz.py")
             if answered >= total * 0.5:
                 if st.button("View Results", use_container_width=True):
-                    st.switch_page("pages/2_Results.py")
+                    st.session_state.quiz_section = "My Results"
+                    st.switch_page("pages/1_Quiz.py")
 
 st.divider()
 

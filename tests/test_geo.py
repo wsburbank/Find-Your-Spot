@@ -88,3 +88,30 @@ class TestEnforceSeparation:
         })
         result = enforce_separation(df, min_distance_miles=20.0)
         assert len(result) == 2
+
+    def test_rollup_returns_mapping(self, close_cities):
+        result, rollup = enforce_separation(
+            close_cities, min_distance_miles=20.0, return_rollup=True,
+        )
+        assert isinstance(rollup, dict)
+        assert len(rollup) == 1  # Small Neighbor was removed
+        # The removed city should map to a kept city's original index
+        removed_orig_idx = list(rollup.keys())[0]
+        kept_orig_idx = rollup[removed_orig_idx]
+        # Big City (pop 8M) is index 0 in the original DF after sort by pop desc
+        # Small Neighbor maps to Big City (nearest kept)
+        assert kept_orig_idx != removed_orig_idx
+
+    def test_rollup_empty_when_no_removals(self):
+        df = pd.DataFrame({
+            "name": ["A", "B"],
+            "state": ["CA", "NY"],
+            "lat": [34.0, 40.7],
+            "lon": [-118.0, -74.0],
+            "population": [100000, 200000],
+        })
+        result, rollup = enforce_separation(
+            df, min_distance_miles=20.0, return_rollup=True,
+        )
+        assert len(rollup) == 0
+        assert len(result) == 2

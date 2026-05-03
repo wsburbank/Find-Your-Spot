@@ -188,10 +188,11 @@ cython_debug/
 #  you could uncomment the following to ignore the entire vscode folder
 # .vscode/
 
-# Find Your Spot - raw downloaded data (reproducible from public APIs)
-data/raw/*.csv
-data/raw/*.xlsx
-data/raw/*.zip
+# Find Your Spot - cached downloads (reproducible from public APIs)
+data/cache/
+data/.cache/
+data/cache_archive.zip
+data/raw/
 *.tmp.*
 
 # Ruff stuff:

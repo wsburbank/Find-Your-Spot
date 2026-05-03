@@ -11,6 +11,7 @@ A Streamlit app inspired by the original FindYourSpot.com that recommends US cit
 - Every dataset used must include a reference to its **source** (organization/agency) and the **date or year** it was collected/published.
 - Source references must be maintained in the code (comments or docstrings near data loading) and surfaced to users in the app's Data Documentation page.
 - If real data is unavailable for a metric or city, leave it as missing/null rather than inventing a value.
+- **Interpolation exception:** When a public API returns sentinel/suppressed values (e.g., Census ACS `-666666666`), the value must be treated as missing. Up to **5% of cities** may have missing numeric values filled via inverse-distance weighted interpolation from nearby cities (within 50 miles, up to 5 neighbors). Interpolated values must be flagged in the dataset (e.g., `interpolated = True`) so they can be distinguished from real data. If interpolation would exceed 5% of the dataset, the script must log a warning and the data source should be reviewed.
 - When adding new data, document:
   - Source name and URL
   - Date/year of the data
@@ -95,6 +96,24 @@ Clean, normalize, and join all metric parquets into a unified city dataset.
 - Handle missing data — leave gaps as null, do not fabricate values
 - Produce a single unified parquet with one row per city and all metrics as columns
 - Log and surface data coverage (% of cities with data for each metric)
+
+### City Explorer Page
+
+The City Explorer page (`pages/4_City_Explorer.py`) provides a standalone browsing experience with three tabs: Map View, Table View, and Compare Cities. It does **not** include quiz navigation buttons — it is independent of the quiz/results flow.
+
+**Sidebar filters must cover every data column** in `data/cities.parquet`. Filters are organized into sections:
+- **Location** — region, state, population (city), metro population, land area
+- **Climate** — avg summer/winter temp, avg high July, avg low January, sunny days, annual rainfall, annual snowfall
+- **Economics** — cost of living index, median home price, median gross rent, median household income, unemployment rate, property tax rate, state income tax rate, state sales tax rate, no-income-tax checkbox
+- **Crime / Safety** — total crime rate, violent crime rate, property crime rate
+- **Education** — avg school rating, university count, major university checkbox, community college checkbox
+- **Transportation** — walkability score, transit score, airport access, direct flight destinations
+- **Geography / Outdoors** — mountains, ocean, lakes, desert (checkboxes); ski resort access; ocean distance, mountain distance, hiking trails, mountain biking trails, camping areas, state parks, national parks, swimming access
+- **Culture / Entertainment** — museums, performing arts venues, concert venue capacity, pro sports teams, Broadway tour stop checkbox
+
+When new columns are added to the city dataset, corresponding sidebar filters must be added to this page.
+
+Range filters keep null values so cities with missing data are not silently dropped.
 
 ### Phase 4: Quiz & Results
 

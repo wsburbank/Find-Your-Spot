@@ -113,7 +113,10 @@
       "WebFetch(domain:graphql.openbeta.io)",
       "WebFetch(domain:docs.openbeta.io)",
       "Bash(curl:*)",
-      "Bash(cd \"/c/Users/burbws/OneDrive - bpx/Documents/Python_Repo/Find-Your-Spot\" && rm -f data/raw/census_acs_economic.csv data/raw/bls_unemployment.csv && python scripts/fetch_real_data.py 2>&1)"
+      "Bash(cd \"/c/Users/burbws/OneDrive - bpx/Documents/Python_Repo/Find-Your-Spot\" && rm -f data/raw/census_acs_economic.csv data/raw/bls_unemployment.csv && python scripts/fetch_real_data.py 2>&1)",
+      "Bash(git checkout:*)",
+      "Bash(python -c ':*)",
+      "Bash(python:*)"
     ]
   }
 }

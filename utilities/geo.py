@@ -121,7 +121,8 @@ def enforce_separation(
     lon_col: str = "lon",
     priority_col: str = "population",
     state_col: str = "state",
-) -> pd.DataFrame:
+    return_rollup: bool = False,
+) -> pd.DataFrame | tuple[pd.DataFrame, dict[int, int]]:
     """Remove cities that are too close together, keeping the higher-priority one.
 
     Uses state-based partitioning: only compares cities within the same state or
@@ -134,12 +135,19 @@ def enforce_separation(
         lon_col: Column name for longitude.
         priority_col: Column used to decide which city to keep (higher value wins).
         state_col: Column name for 2-letter state abbreviation.
+        return_rollup: If True, also return a dict mapping removed row index
+            to the nearest surviving row index (for population roll-up).
 
     Returns:
-        Filtered DataFrame with close duplicates removed.
+        Filtered DataFrame with close duplicates removed. If return_rollup is True,
+        returns (DataFrame, rollup_dict) where rollup_dict maps removed_idx -> nearest_kept_idx.
     """
-    df = cities_df.sort_values(priority_col, ascending=False).reset_index(drop=True)
+    df = cities_df.copy()
+    df["_orig_idx"] = range(len(df))
+    df = df.sort_values(priority_col, ascending=False).reset_index(drop=True)
     keep = set(df.index)
+    # Track which kept city removed each city (the one that caused removal)
+    removed_by: dict[int, int] = {}
 
     for idx in df.index:
         if idx not in keep:
@@ -163,13 +171,49 @@ def enforce_separation(
             )
             if dist < min_distance_miles:
                 keep.discard(other_idx)
+                removed_by[other_idx] = idx
 
-    result = df.loc[sorted(keep)].reset_index(drop=True)
+    result = df.loc[sorted(keep)].copy()
     log.info(
         "enforce_separation: %d -> %d cities (min %.0f mi)",
         len(df), len(result), min_distance_miles,
     )
-    return result
+
+    if not return_rollup:
+        result = result.drop(columns=["_orig_idx"]).reset_index(drop=True)
+        return result
+
+    # Build rollup: for each removed city, find the *nearest* surviving city.
+    # Uses _orig_idx for stable identity across index resets.
+    kept_indices = sorted(keep)
+
+    # Map from _orig_idx -> kept row position for the surviving cities
+    kept_orig_indices = {df.at[k, "_orig_idx"]: k for k in kept_indices}
+
+    rollup: dict[int, int] = {}  # removed _orig_idx -> kept _orig_idx
+    for removed_idx in removed_by:
+        best_dist = float("inf")
+        best_kept_orig = -1
+        r_lat = df.at[removed_idx, lat_col]
+        r_lon = df.at[removed_idx, lon_col]
+        r_state = df.at[removed_idx, state_col]
+        r_neighbors = NEIGHBORING_STATES.get(r_state, {r_state})
+
+        for k_idx in kept_indices:
+            if df.at[k_idx, state_col] not in r_neighbors:
+                continue
+            dist = haversine_miles(
+                r_lat, r_lon, df.at[k_idx, lat_col], df.at[k_idx, lon_col],
+            )
+            if dist < best_dist:
+                best_dist = dist
+                best_kept_orig = df.at[k_idx, "_orig_idx"]
+        if best_kept_orig >= 0:
+            removed_orig = df.at[removed_idx, "_orig_idx"]
+            rollup[removed_orig] = best_kept_orig
+
+    result = result.drop(columns=["_orig_idx"]).reset_index(drop=True)
+    return result, rollup
 
 
 def geocode_city(city_name: str, state: str) -> tuple[float, float] | None:
