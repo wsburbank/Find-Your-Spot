@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from utilities.st_base import initialize_session_state
 from components.scoring import load_cities
 from components.navigation import render_navigation
+from utilities.tax_estimate import add_estimated_taxes_column
 
 initialize_session_state("Find Your Spot - City Explorer", show_header_title=False)
 render_navigation()
@@ -82,8 +83,8 @@ snowfall_range = _range_slider("Annual Snowfall (in)", "annual_snow", fmt="%.0f"
 # Economics
 st.sidebar.subheader("Economics")
 col_range = _range_slider(
-    "Cost of Living Index", "cost_of_living_index", fmt="%.0f",
-    help="100 = National Average",
+    "Housing Cost Index", "cost_of_living_index", fmt="%.0f",
+    help="Based on home prices + rent (100 = National Average). Not a full COL measure.",
 )
 price_range = _int_range_slider("Median Home Price", "median_home_price", fmt="$%d")
 rent_range = _range_slider("Median Gross Rent", "median_gross_rent", fmt="$%.0f")
@@ -91,14 +92,31 @@ income_range = _range_slider("Median Household Income", "median_household_income
 unemployment_range = _range_slider("Unemployment Rate (%)", "unemployment_rate", fmt="%.1f")
 property_tax_range = _range_slider("Property Tax Rate (%)", "avg_property_tax_rate", fmt="%.2f")
 state_income_tax_range = _range_slider("State Income Tax (%)", "state_income_tax_rate", fmt="%.1f")
-state_sales_tax_range = _range_slider("State Sales Tax (%)", "state_sales_tax_rate", fmt="%.2f")
+state_sales_tax_range = _range_slider("Combined Sales Tax (%)", "state_sales_tax_rate", fmt="%.2f")
 no_income_tax = st.sidebar.checkbox("No state income tax")
+
+# Tax Estimator
+st.sidebar.subheader("Tax Estimator")
+st.sidebar.caption("Enter your financials to calculate estimated taxes per city")
+est_income = st.sidebar.slider("Your Annual Income", min_value=0, max_value=500000, value=75000, step=5000, format="$%d")
+est_home_value = st.sidebar.slider("Your Home Value", min_value=0, max_value=2000000, value=400000, step=25000, format="$%d")
+est_expenses = st.sidebar.slider("Your Annual Taxable Spending", min_value=0, max_value=200000, value=40000, step=5000, format="$%d")
 
 # Crime / Safety
 st.sidebar.subheader("Crime / Safety")
 crime_range = _range_slider("Total Crime Rate (per 1K)", "crime_rate_per_1000", fmt="%.1f")
 violent_crime_range = _range_slider("Violent Crime Rate", "violent_crime_rate", fmt="%.1f")
 property_crime_range = _range_slider("Property Crime Rate", "property_crime_rate", fmt="%.1f")
+
+# Air Quality
+st.sidebar.subheader("Air Quality")
+median_aqi_range = _range_slider("Median AQI (lower=better)", "median_aqi", fmt="%.0f")
+pct_good_days_range = _range_slider("Good Air Days (%)", "pct_good_days", fmt="%.0f")
+
+# Government Spending
+st.sidebar.subheader("Government Spending ($/capita)")
+police_spending_range = _range_slider("Police ($/capita)", "police_spending_pc", fmt="$%.0f")
+parks_spending_range = _range_slider("Parks ($/capita)", "parks_spending_pc", fmt="$%.0f")
 
 # Education
 st.sidebar.subheader("Education")
@@ -188,6 +206,14 @@ filtered_df = _between(filtered_df, "crime_rate_per_1000", crime_range)
 filtered_df = _between(filtered_df, "violent_crime_rate", violent_crime_range)
 filtered_df = _between(filtered_df, "property_crime_rate", property_crime_range)
 
+# Air Quality
+filtered_df = _between(filtered_df, "median_aqi", median_aqi_range)
+filtered_df = _between(filtered_df, "pct_good_days", pct_good_days_range)
+
+# Government Spending
+filtered_df = _between(filtered_df, "police_spending_pc", police_spending_range)
+filtered_df = _between(filtered_df, "parks_spending_pc", parks_spending_range)
+
 # Education
 filtered_df = _between(filtered_df, "avg_school_rating", school_rating_range)
 filtered_df = _between(filtered_df, "university_count", university_count_range)
@@ -237,6 +263,11 @@ filtered_df = _between(filtered_df, "performing_arts_venues", performing_arts_ra
 filtered_df = _between(filtered_df, "concert_venue_count", concert_range)
 filtered_df = _between(filtered_df, "major_pro_teams", pro_sports_range)
 
+# Compute estimated taxes column
+has_financials = est_income > 0 or est_home_value > 0 or est_expenses > 0
+if has_financials:
+    add_estimated_taxes_column(filtered_df, est_income, est_home_value, est_expenses)
+
 # Display count
 st.info(f"Showing {len(filtered_df):,} cities matching your filters")
 
@@ -250,7 +281,7 @@ with tab1:
         numeric_columns = {
             "population": "Population",
             "metro_pop": "Metro Population",
-            "cost_of_living_index": "Cost of Living Index",
+            "cost_of_living_index": "Housing Cost Index",
             "median_home_price": "Median Home Price",
             "avg_temp_summer": "Summer Temp (F)",
             "avg_temp_winter": "Winter Temp (F)",
@@ -265,14 +296,23 @@ with tab1:
             "avg_school_rating": "School Rating",
             "avg_property_tax_rate": "Property Tax Rate",
             "state_income_tax_rate": "State Income Tax Rate",
-            "state_sales_tax_rate": "State Sales Tax Rate",
+            "state_sales_tax_rate": "Combined Sales Tax Rate",
             "median_household_income": "Median Household Income",
             "unemployment_rate": "Unemployment Rate",
             "ski_resort_distance_miles": "Ski Resort Distance (mi)",
             "airport_distance_miles": "Airport Distance (mi)",
             "rock_climbing_areas_nearby": "Rock Climbing Areas Nearby",
             "national_parks_within_100mi": "National Parks within 100mi",
+            "median_aqi": "Median AQI (Air Quality)",
+            "pct_good_days": "Good Air Quality Days (%)",
+            "police_spending_pc": "Police Spending ($/capita)",
+            "parks_spending_pc": "Parks Spending ($/capita)",
+            "roads_spending_pc": "Roads Spending ($/capita)",
         }
+        if "goods_rpp" in filtered_df.columns:
+            numeric_columns["goods_rpp"] = "Goods Price Index (RPP)"
+        if has_financials and "estimated_annual_taxes" in filtered_df.columns:
+            numeric_columns["estimated_annual_taxes"] = "Estimated Annual Taxes ($)"
 
         # Selectboxes for map customization
         col1, col2 = st.columns(2)
@@ -296,6 +336,7 @@ with tab1:
         red_when_high = ["cost_of_living_index", "median_home_price", "crime_rate_per_1000",
                          "violent_crime_rate", "property_crime_rate", "unemployment_rate",
                          "avg_property_tax_rate", "state_income_tax_rate", "state_sales_tax_rate",
+                         "estimated_annual_taxes", "median_aqi",
                          "ski_resort_distance_miles", "airport_distance_miles",
                          "avg_temp_summer", "avg_temp_winter"]
         color_scale = "RdYlGn_r" if color_col in red_when_high else "RdYlGn"
@@ -387,7 +428,7 @@ with tab2:
         "avg_temp_summer": "Summer (F)",
         "avg_temp_winter": "Winter (F)",
         "sunny_days": "Sunny Days",
-        "cost_of_living_index": "COL Index",
+        "cost_of_living_index": "Housing Index",
         "median_home_price": "Home Price",
         "no_income_tax_state": "No Income Tax",
         "avg_property_tax_rate": "Property Tax %",
@@ -424,7 +465,7 @@ with tab2:
             "Home Price": st.column_config.NumberColumn(format="$%d"),
             "Summer (F)": st.column_config.NumberColumn(format="%.0f"),
             "Winter (F)": st.column_config.NumberColumn(format="%.0f"),
-            "COL Index": st.column_config.NumberColumn(format="%.0f"),
+            "Housing Index": st.column_config.NumberColumn(format="%.0f"),
             "Property Tax %": st.column_config.NumberColumn(format="%.2f%%"),
             "Crime Rate": st.column_config.NumberColumn(format="%.1f"),
             "School Rating": st.column_config.NumberColumn(format="%.1f"),
@@ -462,7 +503,7 @@ with tab3:
             "avg_frl_rate", "avg_pupil_teacher_ratio",
             "airport_distance_miles", "nearest_hub_distance_miles",
             "ski_resort_distance_miles", "ocean_distance_miles", "mountain_distance_miles",
-            "mean_commute_minutes",
+            "mean_commute_minutes", "estimated_annual_taxes",
         }
         _NEUTRAL = {
             "lat", "lon", "fips_state", "fips_place", "fips_county",
@@ -540,23 +581,45 @@ with tab3:
                 ("Annual Snowfall (in)", "annual_snow", "{:.1f}"),
             ], city1, city2)
 
-        with st.expander("Cost of Living & Taxes", expanded=True):
-            _render_rows([
-                ("Cost of Living Index", "cost_of_living_index", "{:.0f}"),
+        with st.expander("Housing, Goods & Taxes", expanded=True):
+            cost_tax_rows = [
+                ("Housing Cost Index", "cost_of_living_index", "{:.0f}"),
+                ("Goods Price Index (RPP)", "goods_rpp", "{:.1f}"),
                 ("Median Home Price", "median_home_price", "${:,.0f}"),
                 ("Median Gross Rent", "median_gross_rent", "${:,.0f}"),
                 ("Median Household Income", "median_household_income", "${:,.0f}"),
                 ("Property Tax Rate", "avg_property_tax_rate", "{:.2f}%"),
                 ("State Income Tax", "state_income_tax_rate", "{:.1f}%"),
                 ("No State Income Tax", "no_income_tax_state", "{}"),
-                ("State Sales Tax", "state_sales_tax_rate", "{:.2f}%"),
-            ], city1, city2)
+                ("Combined Sales Tax", "state_sales_tax_rate", "{:.2f}%"),
+            ]
+            if has_financials and "estimated_annual_taxes" in filtered_df.columns:
+                cost_tax_rows.append(("Est. Annual Taxes", "estimated_annual_taxes", "${:,.0f}"))
+            _render_rows(cost_tax_rows, city1, city2)
 
         with st.expander("Crime & Safety"):
             _render_rows([
                 ("Total Crime Rate (per 1K)", "crime_rate_per_1000", "{:.1f}"),
                 ("Violent Crime Rate", "violent_crime_rate", "{:.1f}"),
                 ("Property Crime Rate", "property_crime_rate", "{:.1f}"),
+            ], city1, city2)
+
+        with st.expander("Air Quality"):
+            _render_rows([
+                ("Median AQI (lower=better)", "median_aqi", "{:.0f}"),
+                ("Good Air Days (%)", "pct_good_days", "{:.1f}%"),
+                ("Unhealthy Air Days/Year", "days_unhealthy_total", "{:.0f}"),
+                ("Max AQI", "max_aqi", "{:.0f}"),
+            ], city1, city2)
+
+        with st.expander("Government Spending ($/capita)"):
+            _render_rows([
+                ("Police", "police_spending_pc", "${:,.0f}"),
+                ("Fire", "fire_spending_pc", "${:,.0f}"),
+                ("Parks & Recreation", "parks_spending_pc", "${:,.0f}"),
+                ("Roads/Highways", "roads_spending_pc", "${:,.0f}"),
+                ("Sewerage", "sewerage_spending_pc", "${:,.0f}"),
+                ("Health & Hospitals", "health_hospital_spending_pc", "${:,.0f}"),
             ], city1, city2)
 
         with st.expander("Education"):

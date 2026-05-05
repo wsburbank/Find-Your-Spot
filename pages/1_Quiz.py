@@ -97,13 +97,18 @@ def _render_take_quiz():
                     current_val = st.session_state.quiz_answers[q_id].get(
                         slider_id, slider.get("default", 5)
                     )
-                    new_val = st.slider(
-                        slider["label"],
-                        min_value=slider.get("min", 0),
-                        max_value=slider.get("max", 10),
-                        value=current_val,
-                        key=f"slider_{q_id}_{slider_id}",
-                    )
+                    slider_kwargs = {
+                        "label": slider["label"],
+                        "min_value": slider.get("min", 0),
+                        "max_value": slider.get("max", 10),
+                        "value": current_val,
+                        "key": f"slider_{q_id}_{slider_id}",
+                    }
+                    if "step" in slider:
+                        slider_kwargs["step"] = slider["step"]
+                    if "format" in slider:
+                        slider_kwargs["format"] = slider["format"]
+                    new_val = st.slider(**slider_kwargs)
                     st.session_state.quiz_answers[q_id][slider_id] = new_val
         else:
             default = question.get("default", question.get("min", 0))
@@ -361,12 +366,15 @@ def _render_results():
                 st.metric("Lifestyle", f"{scores['lifestyle']:.0f}")
 
             stats = city["stats"]
-            st.caption(
-                f"Population: {city['population']:,} | "
-                f"Weather: {stats['avg_temp_summer']:.0f}F/{stats['avg_temp_winter']:.0f}F | "
-                f"COL: {stats['cost_of_living_index']:.0f} | "
-                f"Home Price: ${stats['median_home_price']:,}"
-            )
+            caption_parts = [
+                f"Population: {city['population']:,}",
+                f"Weather: {stats['avg_temp_summer']:.0f}F/{stats['avg_temp_winter']:.0f}F",
+                f"Housing: {stats['cost_of_living_index']:.0f}",
+                f"Home Price: ${stats['median_home_price']:,}",
+            ]
+            if "estimated_taxes" in city and pd.notna(city["estimated_taxes"].get("total")):
+                caption_parts.append(f"Est. Taxes: ${city['estimated_taxes']['total']:,.0f}/yr")
+            st.caption(" | ".join(caption_parts))
 
         with col3:
             st.markdown(f"### {city['total_score']:.0f}%")
@@ -475,11 +483,24 @@ def _render_city_details():
 
     with col2:
         st.markdown("#### Cost of Living")
-        st.metric("COL Index", f"{city['cost_of_living_index']:.0f}", help="100 = National Average")
+        st.metric("Housing Cost Index", f"{city['cost_of_living_index']:.0f}", help="Based on home prices + rent (100 = national avg)")
+        goods_rpp = city.get("goods_rpp")
+        if pd.notna(goods_rpp):
+            st.metric("Goods Price Index", f"{goods_rpp:.1f}", help="BEA RPP — cost of consumer goods (100 = national avg)")
         st.metric("Median Home Price", f"${city['median_home_price']:,}")
         st.metric("State Income Tax", "None" if city["no_income_tax_state"] else f"{city['state_income_tax_rate']:.1f}%")
         st.metric("Property Tax Rate", f"{city['avg_property_tax_rate']:.2f}%")
         st.metric("Sales Tax", f"{city['state_sales_tax_rate']:.1f}%")
+
+        # Show personalized tax estimate if user provided financials
+        if city_score_data and "estimated_taxes" in city_score_data:
+            taxes = city_score_data["estimated_taxes"]
+            if pd.notna(taxes.get("total")):
+                st.markdown("#### Your Estimated Taxes")
+                st.metric("State Income Tax", f"${taxes['income_tax']:,.0f}/yr")
+                st.metric("Property Tax", f"${taxes['property_tax']:,.0f}/yr")
+                st.metric("Sales Tax", f"${taxes['sales_tax']:,.0f}/yr")
+                st.metric("Total Estimated Taxes", f"${taxes['total']:,.0f}/yr")
 
     with col3:
         st.markdown("#### Livability")

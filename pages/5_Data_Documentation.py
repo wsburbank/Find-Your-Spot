@@ -3,6 +3,8 @@ Data Documentation Page - View raw data and understand the database
 """
 import streamlit as st
 import pandas as pd
+import pydeck as pdk
+import numpy as np
 import sys
 from pathlib import Path
 
@@ -12,6 +14,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from utilities.st_base import initialize_session_state
 from components.scoring import load_cities
 from components.navigation import render_navigation
+
+PROJECT_ROOT = Path(__file__).parent.parent
 
 initialize_session_state("Find Your Spot - Data Documentation", show_header_title=False)
 render_navigation()
@@ -53,6 +57,228 @@ with col3:
     st.metric("Data Fields", len(cities_df.columns))
 with col4:
     st.metric("Regions", cities_df["region"].nunique())
+
+st.divider()
+
+# ---------------------------------------------------------------------------
+# Interactive Data Map
+# ---------------------------------------------------------------------------
+
+st.header("Data Map")
+st.markdown("Explore geographic data layers on an interactive map. Select datasets to display.")
+
+# Layer definitions: name -> (color_rgb, loader_function)
+# Colors chosen from BPX brand palette for visual distinction
+
+LAYER_COLORS = {
+    "Cities": [0, 127, 0],           # bp green
+    "Ski Resorts": [0, 122, 201],     # bp blue
+    "National Parks": [102, 0, 153],  # bp purple
+    "Airports": [255, 153, 0],        # bp yellow orange
+    "Lakes": [0, 0, 153],             # bp dark blue
+    "State Parks": [153, 204, 0],     # bp light green
+    "Campgrounds": [210, 70, 20],     # bp orange
+    "Climbing Areas": [102, 102, 102],  # bp dark grey
+    "Museums": [255, 230, 0],         # bp yellow
+}
+
+
+@st.cache_data(show_spinner=False)
+def _load_layer(layer_name: str) -> pd.DataFrame:
+    """Load a geographic dataset and return a DataFrame with name, lat, lon."""
+    if layer_name == "Cities":
+        df = load_cities()
+        return df[["name", "state", "lat", "lon"]].assign(
+            label=df["name"] + ", " + df["state"]
+        )
+
+    if layer_name == "Ski Resorts":
+        from scripts.collect_geography import SKI_RESORTS
+        records = [{"name": r[0], "lat": r[1], "lon": r[2]} for r in SKI_RESORTS]
+        return pd.DataFrame(records).assign(label=lambda d: d["name"])
+
+    if layer_name == "National Parks":
+        from scripts.collect_geography import NATIONAL_PARKS
+        records = [{"name": r[0], "lat": r[1], "lon": r[2]} for r in NATIONAL_PARKS]
+        return pd.DataFrame(records).assign(label=lambda d: d["name"])
+
+    if layer_name == "Airports":
+        csv_path = PROJECT_ROOT / "data" / "cache" / "ourairports.csv"
+        if not csv_path.exists():
+            return pd.DataFrame(columns=["name", "lat", "lon", "label"])
+        raw = pd.read_csv(csv_path)
+        us = raw[
+            (raw["iso_country"] == "US")
+            & (raw["scheduled_service"] == "yes")
+            & raw["type"].isin(["large_airport", "medium_airport", "small_airport"])
+        ].dropna(subset=["latitude_deg", "longitude_deg", "iata_code"]).copy()
+        return pd.DataFrame({
+            "name": us["name"],
+            "lat": us["latitude_deg"],
+            "lon": us["longitude_deg"],
+            "label": us["iata_code"] + " - " + us["name"],
+        })
+
+    if layer_name == "Lakes":
+        parquet = PROJECT_ROOT / "data" / "lakes.parquet"
+        if not parquet.exists():
+            return pd.DataFrame(columns=["name", "lat", "lon", "label"])
+        df = pd.read_parquet(parquet)
+        # Only centroids, skip boundary sample points
+        df = df[~df["is_boundary_point"]].copy()
+        area = df["area_acres"].round(0).astype(int).astype(str)
+        return pd.DataFrame({
+            "name": df["name"],
+            "lat": df["lat"],
+            "lon": df["lon"],
+            "label": df["name"].fillna("Unnamed") + " (" + area + " acres)",
+        })
+
+    if layer_name == "State Parks":
+        parquet = PROJECT_ROOT / "data" / "raw" / "outdoor_recreation" / "padus_state_parks.parquet"
+        if not parquet.exists():
+            return pd.DataFrame(columns=["name", "lat", "lon", "label"])
+        df = pd.read_parquet(parquet)
+        return pd.DataFrame({
+            "name": df["name"],
+            "lat": df["lat"],
+            "lon": df["lon"],
+            "label": df["name"] + " (" + df["state"] + ")",
+        })
+
+    if layer_name == "Campgrounds":
+        parquet = PROJECT_ROOT / "data" / "raw" / "outdoor_recreation" / "usfs_campgrounds.parquet"
+        if not parquet.exists():
+            return pd.DataFrame(columns=["name", "lat", "lon", "label"])
+        df = pd.read_parquet(parquet)
+        # Filter to valid US coordinates
+        df = df[(df["lat"] > 17) & (df["lat"] < 72) & (df["lon"] > -180) & (df["lon"] < -65)].copy()
+        return pd.DataFrame({
+            "name": df["name"],
+            "lat": df["lat"],
+            "lon": df["lon"],
+            "label": df["name"],
+        })
+
+    if layer_name == "Climbing Areas":
+        parquet = PROJECT_ROOT / "data" / "raw" / "outdoor_recreation" / "openbeta_climbing.parquet"
+        if not parquet.exists():
+            return pd.DataFrame(columns=["name", "lat", "lon", "label"])
+        df = pd.read_parquet(parquet)
+        climbs = df["total_climbs"].fillna(0).astype(int).astype(str)
+        return pd.DataFrame({
+            "name": df["name"],
+            "lat": df["lat"],
+            "lon": df["lon"],
+            "label": df["name"] + " (" + climbs + " routes)",
+        })
+
+    if layer_name == "Museums":
+        csv_path = PROJECT_ROOT / "data" / "cache" / "imls_museums.csv"
+        if not csv_path.exists():
+            return pd.DataFrame(columns=["name", "lat", "lon", "label"])
+        raw = pd.read_csv(csv_path, encoding="latin-1", low_memory=False)
+        raw["LATITUDE"] = pd.to_numeric(raw["LATITUDE"], errors="coerce")
+        raw["LONGITUDE"] = pd.to_numeric(raw["LONGITUDE"], errors="coerce")
+        raw = raw.dropna(subset=["LATITUDE", "LONGITUDE"]).copy()
+        return pd.DataFrame({
+            "name": raw["COMMONNAME"],
+            "lat": raw["LATITUDE"],
+            "lon": raw["LONGITUDE"],
+            "label": raw["COMMONNAME"].fillna("Museum"),
+        })
+
+    return pd.DataFrame(columns=["name", "lat", "lon", "label"])
+
+
+# Layer selection
+available_layers = list(LAYER_COLORS.keys())
+selected_layers = st.multiselect(
+    "Select data layers to display",
+    options=available_layers,
+    default=["Cities", "Ski Resorts", "National Parks"],
+)
+
+if selected_layers:
+    # Build pydeck layers
+    deck_layers = []
+    legend_items = []
+
+    for layer_name in selected_layers:
+        with st.spinner(f"Loading {layer_name}..."):
+            df = _load_layer(layer_name)
+
+        if df.empty:
+            st.warning(f"No data available for {layer_name}.")
+            continue
+
+        color = LAYER_COLORS[layer_name]
+        legend_items.append((layer_name, color, len(df)))
+
+        # Scale point size: cities and large datasets get smaller points
+        if layer_name == "Cities":
+            radius = 6000
+        elif len(df) > 5000:
+            radius = 2000
+        elif len(df) > 1000:
+            radius = 3000
+        else:
+            radius = 4500
+
+        layer_df = df[["lat", "lon", "label"]].copy()
+        layer_df["color"] = [color + [200]] * len(layer_df)  # RGBA with alpha
+
+        deck_layers.append(
+            pdk.Layer(
+                "ScatterplotLayer",
+                data=layer_df,
+                get_position=["lon", "lat"],
+                get_fill_color="color",
+                get_radius=radius,
+                pickable=True,
+                auto_highlight=True,
+            )
+        )
+
+    if deck_layers:
+        tooltip = {
+            "html": "<b>{label}</b>",
+            "style": {
+                "backgroundColor": "#333",
+                "color": "white",
+                "fontSize": "13px",
+                "padding": "8px",
+            },
+        }
+
+        view_state = pdk.ViewState(
+            latitude=39.0,
+            longitude=-98.0,
+            zoom=3.5,
+            pitch=0,
+        )
+
+        st.pydeck_chart(
+            pdk.Deck(
+                layers=deck_layers,
+                initial_view_state=view_state,
+                tooltip=tooltip,
+                map_style="https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json",
+            ),
+            height=550,
+        )
+
+        # Legend
+        legend_html = " &nbsp;|&nbsp; ".join(
+            f'<span style="color:rgb({c[0]},{c[1]},{c[2]});font-weight:bold;">'
+            f"&#9679;</span> {name} ({count:,})"
+            for name, c, count in legend_items
+        )
+        st.markdown(legend_html, unsafe_allow_html=True)
+    else:
+        st.info("No data loaded for selected layers.")
+else:
+    st.info("Select one or more data layers above to display them on the map.")
 
 st.divider()
 

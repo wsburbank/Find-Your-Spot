@@ -5,6 +5,8 @@ Reads from:
   - data/cities_master.parquet (master city list)
   - data/climate.parquet (weather normals)
   - data/cost_of_living.parquet (housing, income, taxes)
+  - data/sales_tax.parquet (city-level combined sales tax rates)
+  - data/rpp.parquet (BEA Regional Price Parities — Goods index)
   - data/crime.parquet (crime rates)
   - data/airports.parquet (airport access)
   - data/walkability.parquet (walkability and transit scores from EPA SLD)
@@ -18,6 +20,9 @@ Reads from:
   - data/sports.parquet (pro/minor league sports teams from official rosters)
   - data/entertainment.parquet (performing arts venues from Census CBP 2022)
   - data/employment.parquet (unemployment rate and job growth from Census ACS)
+  - data/air_quality.parquet (EPA AQI annual county summary 2024)
+  - data/humidity.parquet (NOAA 1991-2020 average summer dew point)
+  - data/gov_finances.parquet (Census of Govts municipal finance per capita FY2023)
 
 Output: data/cities.parquet (unified dataset for scoring)
 """
@@ -101,6 +106,31 @@ def main():
         )
         log.info("Cost: %d/%d cities have data",
                  unified["median_home_price"].notna().sum(), len(unified))
+
+    # Merge BEA Regional Price Parities (Goods index)
+    rpp = load_dataset("rpp")
+    if rpp is not None:
+        rpp_cols = ["city_id", "goods_rpp", "rpp_level"]
+        unified = unified.merge(rpp[rpp_cols], on="city_id", how="left")
+        log.info("RPP Goods: %d/%d cities have data (%.0f%% MSA-level)",
+                 unified["goods_rpp"].notna().sum(), len(unified),
+                 (unified["rpp_level"] == "msa").sum() / len(unified) * 100)
+
+    # Merge city-level sales tax data (overrides state_sales_tax_rate from cost_of_living)
+    sales_tax = load_dataset("sales_tax")
+    if sales_tax is not None:
+        unified = unified.merge(
+            sales_tax[["city_id", "combined_sales_tax_rate", "local_sales_tax_rate",
+                       "sales_tax_source", "sales_tax_level"]],
+            on="city_id",
+            how="left",
+        )
+        # Override state_sales_tax_rate with the combined rate (state + local)
+        has_combined = unified["combined_sales_tax_rate"].notna()
+        unified.loc[has_combined, "state_sales_tax_rate"] = unified.loc[has_combined, "combined_sales_tax_rate"]
+        city_level = (unified["sales_tax_level"] == "city").sum()
+        log.info("Sales tax: %d/%d city-level, rest state-avg",
+                 city_level, len(unified))
 
     # Merge crime data
     if crime is not None:
@@ -239,6 +269,30 @@ def main():
         log.info("Employment (BLS): %d/%d cities have unemployment data",
                  unified["unemployment_rate"].notna().sum(), len(unified))
 
+    # Merge air quality data (EPA AQS 2024)
+    air_quality = load_dataset("air_quality")
+    if air_quality is not None:
+        aq_cols = [c for c in air_quality.columns if c not in ("name", "state")]
+        unified = unified.merge(air_quality[aq_cols], on="city_id", how="left")
+        log.info("Air quality: %d/%d cities have data",
+                 unified["median_aqi"].notna().sum(), len(unified))
+
+    # Merge humidity data (NOAA 1991-2020 hourly dew point normals)
+    humidity = load_dataset("humidity")
+    if humidity is not None:
+        hum_cols = [c for c in humidity.columns if c not in ("name", "state")]
+        unified = unified.merge(humidity[hum_cols], on="city_id", how="left")
+        log.info("Humidity: %d/%d cities have data",
+                 unified["avg_summer_dewpoint"].notna().sum(), len(unified))
+
+    # Merge government finance data (Census of Governments FY2023)
+    gov_fin = load_dataset("gov_finances")
+    if gov_fin is not None:
+        gf_cols = [c for c in gov_fin.columns if c not in ("name", "state")]
+        unified = unified.merge(gov_fin[gf_cols], on="city_id", how="left")
+        log.info("Gov finances: %d/%d cities have data",
+                 unified["police_spending_pc"].notna().sum(), len(unified))
+
     # Merge demographics data (Census ACS 2022 — diversity, age, education, employment)
     if demographics is not None:
         # Drop unemployment_rate from demographics — employment.parquet has
@@ -275,6 +329,9 @@ def main():
         "museums_count", "performing_arts_venues", "concert_venue_count",
         "diversity_index", "median_age", "pct_bachelors_plus",
         "unemployment_rate", "poverty_rate", "pct_uninsured",
+        "median_aqi", "pct_good_days", "days_unhealthy_total",
+        "police_spending_pc", "fire_spending_pc", "parks_spending_pc",
+        "roads_spending_pc", "total_revenue_pc",
     ]
     for col in key_cols:
         if col in unified.columns:

@@ -94,8 +94,12 @@ def fetch_acs_housing_data() -> pd.DataFrame:
     # B25077_001E = Median value of owner-occupied housing units
     # B19013_001E = Median household income
     # B25064_001E = Median gross rent
+    # B25077_001E = Median value of owner-occupied housing units
+    # B19013_001E = Median household income
+    # B25064_001E = Median gross rent
+    # B25103_001E = Median real estate taxes paid (for computing city-level property tax rate)
     params = {
-        "get": "NAME,B25077_001E,B19013_001E,B25064_001E",
+        "get": "NAME,B25077_001E,B19013_001E,B25064_001E,B25103_001E",
         "for": "place:*",
         "in": "state:*",
     }
@@ -109,16 +113,19 @@ def fetch_acs_housing_data() -> pd.DataFrame:
         "B25077_001E": "median_home_price",
         "B19013_001E": "median_household_income",
         "B25064_001E": "median_gross_rent",
+        "B25103_001E": "median_real_estate_taxes",
         "state": "fips_state",
         "place": "fips_place",
     })
 
-    for col in ["median_home_price", "median_household_income", "median_gross_rent"]:
+    numeric_cols = ["median_home_price", "median_household_income",
+                    "median_gross_rent", "median_real_estate_taxes"]
+    for col in numeric_cols:
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
     # Census ACS uses -666666666 as a sentinel for suppressed/missing data.
     # Replace any negative values (which are always sentinel values) with NaN.
-    for col in ["median_home_price", "median_household_income", "median_gross_rent"]:
+    for col in numeric_cols:
         bad = df[col] < 0
         if bad.any():
             log.warning(
@@ -129,7 +136,8 @@ def fetch_acs_housing_data() -> pd.DataFrame:
 
     log.info("Fetched ACS data for %d places", len(df))
     return df[["fips_state", "fips_place", "median_home_price",
-               "median_household_income", "median_gross_rent"]]
+               "median_household_income", "median_gross_rent",
+               "median_real_estate_taxes"]]
 
 
 def compute_cost_of_living_index(df: pd.DataFrame) -> pd.Series:
@@ -147,7 +155,8 @@ def compute_cost_of_living_index(df: pd.DataFrame) -> pd.Series:
     return (home_ratio * 0.6 + rent_ratio * 0.4).round(1)
 
 
-HOUSING_COLS = ["median_home_price", "median_household_income", "median_gross_rent"]
+HOUSING_COLS = ["median_home_price", "median_household_income", "median_gross_rent",
+                "median_real_estate_taxes"]
 
 
 def interpolate_missing_housing(
@@ -246,13 +255,33 @@ def main():
     # Add cost of living index
     merged["cost_of_living_index"] = compute_cost_of_living_index(merged)
 
-    # Add state tax data
+    # Compute city-level effective property tax rate from ACS data
+    # Effective rate = (median annual taxes / median home value) * 100
+    valid_mask = (merged["median_real_estate_taxes"].notna()
+                  & (merged["median_home_price"].notna())
+                  & (merged["median_home_price"] > 0))
+    merged["avg_property_tax_rate"] = np.where(
+        valid_mask,
+        (merged["median_real_estate_taxes"] / merged["median_home_price"] * 100).round(2),
+        np.nan,
+    )
+    city_tax_count = merged["avg_property_tax_rate"].notna().sum()
+    log.info("City-level property tax rates: %d/%d cities", city_tax_count, len(merged))
+
+    # Fall back to state-level Tax Foundation rate for cities missing ACS tax data
+    state_fallback = merged["state"].map(
+        lambda s: STATE_TAXES.get(s, {}).get("property_tax_rate"))
+    fallback_mask = merged["avg_property_tax_rate"].isna()
+    merged.loc[fallback_mask, "avg_property_tax_rate"] = state_fallback[fallback_mask]
+    if fallback_mask.any():
+        log.info("Used state-level fallback for %d cities missing ACS tax data",
+                 fallback_mask.sum())
+
+    # Add state-level tax data (income, sales, no-income-tax flag)
     merged["state_income_tax_rate"] = merged["state"].map(
         lambda s: STATE_TAXES.get(s, {}).get("income_tax_rate"))
     merged["state_sales_tax_rate"] = merged["state"].map(
         lambda s: STATE_TAXES.get(s, {}).get("sales_tax_rate"))
-    merged["avg_property_tax_rate"] = merged["state"].map(
-        lambda s: STATE_TAXES.get(s, {}).get("property_tax_rate"))
     merged["no_income_tax_state"] = merged["state"].map(
         lambda s: STATE_TAXES.get(s, {}).get("no_income_tax", False))
 
@@ -260,7 +289,7 @@ def main():
     out = merged[[
         "city_id", "name", "state",
         "median_home_price", "median_household_income", "median_gross_rent",
-        "cost_of_living_index", "interpolated",
+        "median_real_estate_taxes", "cost_of_living_index", "interpolated",
         "state_income_tax_rate", "state_sales_tax_rate",
         "avg_property_tax_rate", "no_income_tax_state",
     ]].copy()
@@ -275,8 +304,10 @@ def main():
         source_url="https://api.census.gov/data/2022/acs/acs5",
         date_collected="2026-05-01",
         notes=(
-            "Median home value and income from ACS 2022. "
-            "State tax rates from Tax Foundation 2024 published data. "
+            "Median home value, income, rent, and real estate taxes from ACS 2022 at place level. "
+            "Property tax rate computed per city: median_taxes / median_home_value * 100. "
+            "State-level fallback (Tax Foundation 2024) used for cities missing ACS tax data. "
+            "Income/sales tax rates from Tax Foundation 2024 (state-level only). "
             "COL index computed relative to national median (home value 60%, rent 40%)."
         ),
     )

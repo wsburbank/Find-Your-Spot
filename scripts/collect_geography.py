@@ -23,7 +23,6 @@ import sys
 import zipfile
 from pathlib import Path
 
-import geopandas as gpd
 import numpy as np
 import pandas as pd
 
@@ -274,6 +273,7 @@ def load_coastline_coords() -> np.ndarray:
 
     shp_path = extract_dir / "ne_10m_coastline.shp"
     log.info("Loading Natural Earth coastline from %s ...", shp_path.name)
+    import geopandas as gpd
     gdf = gpd.read_file(shp_path)
 
     # US bounding box: lat 17-72, lon -180 to -65 (plus western Aleutians > 170)

@@ -19,6 +19,7 @@ import numpy as np
 from pathlib import Path
 
 from components.quiz_questions import get_range_questions
+from utilities.tax_estimate import estimate_taxes
 
 
 def load_cities():
@@ -118,25 +119,19 @@ def score_climate(city, preferences):
             matches = True
         score += 25 if matches else 8
 
-    # Humidity preference (independent multi-select)
+    # Humidity preference (range on avg_summer_dewpoint)
     humidity_prefs = preferences.get("humidity_preference", [])
     if isinstance(humidity_prefs, str):
         humidity_prefs = [humidity_prefs]
     if humidity_prefs:
         max_score += 20
-        rainfall = city["annual_rainfall"]
-        is_humid = rainfall > 40
-        is_dry = rainfall < 20
-        matches = False
-        if "humidity_not_factor" in humidity_prefs:
-            matches = True
-        if "low_humidity" in humidity_prefs and is_dry:
-            matches = True
-        if "moderate_humidity" in humidity_prefs and 20 <= rainfall <= 45:
-            matches = True
-        if "high_humidity" in humidity_prefs and is_humid:
-            matches = True
-        score += 20 if matches else 8
+        dewpoint = city.get("avg_summer_dewpoint")
+        if pd.notna(dewpoint):
+            rq = _get_range_questions().get("humidity_preference", {})
+            score += _range_score(dewpoint, humidity_prefs,
+                                  rq.get("range_map", {}), full=20, partial=12, miss=3)
+        else:
+            score += 10  # neutral when data missing
 
     # Rain preference (range)
     rain_prefs = preferences.get("rain_preference", [])
@@ -319,15 +314,27 @@ def score_cost_taxes(city, preferences):
             best = max(best, 25)
         score += best
 
-    # Property tax tolerance (range)
-    prop_prefs = preferences.get("property_tax_tolerance", [])
-    if isinstance(prop_prefs, str):
-        prop_prefs = [prop_prefs]
-    if prop_prefs:
+    # Rent budget (slider)
+    max_rent = preferences.get("rent_budget")
+    if max_rent:
         max_score += 25
-        rq = _get_range_questions().get("property_tax_tolerance", {})
-        score += _range_score(city["avg_property_tax_rate"], prop_prefs,
-                              rq.get("range_map", {}), full=25, partial=15, miss=5)
+        median_rent = city["median_gross_rent"]
+        if median_rent <= max_rent:
+            budget_ratio = median_rent / max_rent
+            if budget_ratio <= 0.7:
+                score += 25
+            elif budget_ratio <= 0.85:
+                score += 20
+            else:
+                score += 15
+        else:
+            over_ratio = median_rent / max_rent
+            if over_ratio <= 1.15:
+                score += 12
+            elif over_ratio <= 1.3:
+                score += 8
+            else:
+                score += 3
 
     return (score / max_score * 100) if max_score > 0 else 0
 
@@ -514,47 +521,33 @@ def score_education(city, preferences):
             best = max(best, 15)
         score += best
 
-    # Family-friendliness (independent multi-select)
-    family_prefs = preferences.get("family_friendliness", [])
-    if isinstance(family_prefs, str):
-        family_prefs = [family_prefs]
-    if family_prefs:
+    # Remote work culture (range on pct_work_from_home)
+    remote_prefs = preferences.get("remote_work", [])
+    if isinstance(remote_prefs, str):
+        remote_prefs = [remote_prefs]
+    if remote_prefs:
         max_score += 20
-        best = 10
-        if "no_family_preference" in family_prefs:
-            best = 20
-        if "great_schools" in family_prefs:
-            school_rating = city.get("avg_school_rating")
-            if pd.notna(school_rating) and school_rating >= 7.5 and city["crime_rate_per_1000"] < 30:
-                best = max(best, 20)
-            elif pd.notna(school_rating) and school_rating >= 6.5:
-                best = max(best, 15)
-        if "family_activities" in family_prefs:
-            if city["state_parks_nearby"] >= 5:
-                best = max(best, 20)
-            else:
-                best = max(best, 15)
-        if "adult_focused" in family_prefs:
-            if city["population"] >= 200000:
-                best = max(best, 20)
-            else:
-                best = max(best, 15)
-        score += best
+        wfh = city.get("pct_work_from_home")
+        if pd.notna(wfh):
+            rq = _get_range_questions().get("remote_work", {})
+            score += _range_score(wfh, remote_prefs,
+                                  rq.get("range_map", {}), full=20, partial=12, miss=5)
+        else:
+            score += 10
 
-    # Diversity (independent multi-select)
+    # Diversity (range on diversity_index)
     diversity_prefs = preferences.get("diversity", [])
     if isinstance(diversity_prefs, str):
         diversity_prefs = [diversity_prefs]
     if diversity_prefs:
         max_score += 20
-        best = 12
-        if "diversity_not_factor" in diversity_prefs:
-            best = 20
-        if "very_diverse" in diversity_prefs and city["population"] >= 200000:
-            best = max(best, 20)
-        if "moderate_diversity" in diversity_prefs:
-            best = max(best, 20)
-        score += best
+        div_index = city.get("diversity_index")
+        if pd.notna(div_index):
+            rq = _get_range_questions().get("diversity", {})
+            score += _range_score(div_index, diversity_prefs,
+                                  rq.get("range_map", {}), full=20, partial=12, miss=5)
+        else:
+            score += 10
 
     return (score / max_score * 100) if max_score > 0 else 0
 
@@ -593,28 +586,33 @@ def score_practical(city, preferences):
             best = max(best, 15)
         score += best
 
-    # Community financial health (independent multi-select)
-    health_prefs = preferences.get("community_health", [])
-    if isinstance(health_prefs, str):
-        health_prefs = [health_prefs]
-    if health_prefs:
+    # Air quality (range on median_aqi)
+    aq_prefs = preferences.get("air_quality", [])
+    if isinstance(aq_prefs, str):
+        aq_prefs = [aq_prefs]
+    if aq_prefs:
         max_score += 20
-        unemployment = city["unemployment_rate"]
-        job_growth = city["job_growth_rate"]
-        best = 8
-        if "not_concern" in health_prefs:
-            best = 20
-        if "thriving_essential" in health_prefs and unemployment < 4 and job_growth > 2:
-            best = max(best, 20)
-        elif "thriving_essential" in health_prefs and unemployment < 5 and job_growth > 0:
-            best = max(best, 15)
-        if "stable_economy" in health_prefs and unemployment < 6:
-            best = max(best, 20)
-        if "up_and_coming" in health_prefs and job_growth > 3:
-            best = max(best, 20)
-        elif "up_and_coming" in health_prefs:
-            best = max(best, 15)
-        score += best
+        aqi = city.get("median_aqi")
+        if pd.notna(aqi):
+            rq = _get_range_questions().get("air_quality", {})
+            score += _range_score(aqi, aq_prefs,
+                                  rq.get("range_map", {}), full=20, partial=14, miss=5)
+        else:
+            score += 10
+
+    # City fiscal health (range on debt_outstanding_pc)
+    fiscal_prefs = preferences.get("city_fiscal_health", [])
+    if isinstance(fiscal_prefs, str):
+        fiscal_prefs = [fiscal_prefs]
+    if fiscal_prefs:
+        max_score += 20
+        debt = city.get("debt_outstanding_pc")
+        if pd.notna(debt):
+            rq = _get_range_questions().get("city_fiscal_health", {})
+            score += _range_score(debt, fiscal_prefs,
+                                  rq.get("range_map", {}), full=20, partial=14, miss=5)
+        else:
+            score += 10
 
     # Safety priority (range on crime rate)
     safety_prefs = preferences.get("safety_priority", [])
@@ -664,6 +662,13 @@ def calculate_city_scores(preferences, top_n=10):
     """
     cities_df = load_cities()
 
+    # Extract user financials for tax estimation (if provided)
+    financials = preferences.get("my_financials", {})
+    my_income = financials.get("my_income", 0)
+    my_home_value = financials.get("my_home_value", 0)
+    my_annual_expenses = financials.get("my_annual_expenses", 0)
+    has_financials = my_income > 0 or my_home_value > 0 or my_annual_expenses > 0
+
     results = []
     for _, city in cities_df.iterrows():
         climate_score = score_climate(city, preferences)
@@ -680,7 +685,7 @@ def calculate_city_scores(preferences, top_n=10):
         ]
         total_score = np.mean([s for s in category_scores if s > 0])
 
-        results.append({
+        result = {
             "city_id": city["city_id"],
             "name": city["name"],
             "state": city["state"],
@@ -708,7 +713,20 @@ def calculate_city_scores(preferences, top_n=10):
                 "walkability_score": city["walkability_score"],
                 "crime_rate": city["crime_rate_per_1000"],
             }
-        })
+        }
+
+        if has_financials:
+            taxes = estimate_taxes(
+                my_income, my_home_value, my_annual_expenses,
+                city["state_income_tax_rate"],
+                city["avg_property_tax_rate"],
+                city["state_sales_tax_rate"],
+                city.get("goods_rpp", 100.0),
+                city.get("cost_of_living_index", 100.0),
+            )
+            result["estimated_taxes"] = taxes
+
+        results.append(result)
 
     results.sort(key=lambda x: x["total_score"], reverse=True)
     return results[:top_n]

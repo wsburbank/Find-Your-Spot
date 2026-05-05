@@ -39,12 +39,20 @@ QUIZ_QUESTIONS = {
             "id": "humidity_preference",
             "question": "How do you feel about humidity? (select all acceptable)",
             "options": [
-                ("high_humidity", "Don't mind humid summers"),
-                ("moderate_humidity", "Moderate humidity"),
-                ("low_humidity", "Dry climate (desert-like)"),
+                ("high_humidity", "Don't mind humid summers (dew point 65F+)"),
+                ("moderate_humidity", "Moderate humidity (dew point 55-65F)"),
+                ("low_humidity", "Dry climate (dew point under 55F)"),
                 ("humidity_not_factor", "Not a factor"),
             ],
             "multi_select": True,
+            "range": True,
+            "range_metric": "avg_summer_dewpoint",
+            "range_map": {
+                "high_humidity": (65, 100),
+                "moderate_humidity": (55, 65),
+                "low_humidity": (0, 55),
+                "humidity_not_factor": (0, 100),
+            },
         },
         {
             "id": "rain_preference",
@@ -213,23 +221,24 @@ QUIZ_QUESTIONS = {
             "multi_select": True,
         },
         {
-            "id": "property_tax_tolerance",
-            "question": "Property tax tolerance? (select all acceptable)",
-            "options": [
-                ("pay_for_services", "Will pay for good services (2%+)"),
-                ("moderate_tax", "Moderate is fine (1-2%)"),
-                ("low_tax_essential", "Low taxes essential (under 1%)"),
-                ("not_factor", "Not a factor"),
+            "id": "my_financials",
+            "question": "Enter your estimated financials to see personalized tax estimates",
+            "type": "sliders",
+            "sliders": [
+                {"id": "my_income", "label": "Annual Income ($)", "min": 0, "max": 500000, "default": 75000, "step": 5000, "format": "$%d"},
+                {"id": "my_home_value", "label": "Home Value ($)", "min": 0, "max": 2000000, "default": 400000, "step": 25000, "format": "$%d"},
+                {"id": "my_annual_expenses", "label": "Annual Taxable Spending ($)", "min": 0, "max": 200000, "default": 40000, "step": 5000, "format": "$%d"},
             ],
-            "multi_select": True,
-            "range": True,
-            "range_metric": "avg_property_tax_rate",
-            "range_map": {
-                "pay_for_services": (2.0, 10.0),
-                "moderate_tax": (1.0, 2.0),
-                "low_tax_essential": (0.0, 1.0),
-                "not_factor": (0.0, 10.0),
-            },
+        },
+        {
+            "id": "rent_budget",
+            "question": "Maximum monthly rent? (for renters — skip if buying)",
+            "type": "slider",
+            "min": 500,
+            "max": 5000,
+            "default": 1500,
+            "step": 100,
+            "format": "$%d",
         },
     ],
     # ------------------------------------------------------------------
@@ -404,25 +413,40 @@ QUIZ_QUESTIONS = {
             "multi_select": True,
         },
         {
-            "id": "family_friendliness",
-            "question": "Family-friendliness? (select all that apply)",
+            "id": "remote_work",
+            "question": "Remote work culture? (select all acceptable)",
             "options": [
-                ("great_schools", "Great schools & safe neighborhoods"),
-                ("family_activities", "Family activities important"),
-                ("adult_focused", "Adult-focused"),
-                ("no_family_preference", "No preference"),
+                ("remote_heavy", "Strong remote work culture (15%+ WFH)"),
+                ("some_remote", "Some remote work (8-15% WFH)"),
+                ("remote_not_factor", "Not a factor"),
             ],
             "multi_select": True,
+            "range": True,
+            "range_metric": "pct_work_from_home",
+            "range_map": {
+                "remote_heavy": (15, 100),
+                "some_remote": (8, 15),
+                "remote_not_factor": (0, 100),
+            },
         },
         {
             "id": "diversity",
-            "question": "Diversity & inclusion? (select all acceptable)",
+            "question": "Community diversity? (select all acceptable)",
             "options": [
-                ("very_diverse", "Very diverse community"),
-                ("moderate_diversity", "Moderate diversity"),
+                ("very_diverse", "Very diverse (diversity index 0.6+)"),
+                ("moderate_diversity", "Moderate diversity (0.4-0.6)"),
+                ("homogeneous_ok", "Homogeneous is fine (under 0.4)"),
                 ("diversity_not_factor", "Not a factor"),
             ],
             "multi_select": True,
+            "range": True,
+            "range_metric": "diversity_index",
+            "range_map": {
+                "very_diverse": (0.6, 1.0),
+                "moderate_diversity": (0.4, 0.6),
+                "homogeneous_ok": (0.0, 0.4),
+                "diversity_not_factor": (0.0, 1.0),
+            },
         },
     ],
     # ------------------------------------------------------------------
@@ -442,15 +466,38 @@ QUIZ_QUESTIONS = {
             "multi_select": True,
         },
         {
-            "id": "community_health",
-            "question": "Community financial health? (select all acceptable)",
+            "id": "air_quality",
+            "question": "Air quality importance? (select all acceptable)",
             "options": [
-                ("thriving_essential", "Economically thriving essential"),
-                ("stable_economy", "Stable economy"),
-                ("up_and_coming", "Up-and-coming/revitalizing"),
-                ("not_concern", "Not a concern"),
+                ("pristine_air", "Pristine air essential (AQI under 35)"),
+                ("good_air", "Good air quality (AQI under 50)"),
+                ("air_not_factor", "Not a factor"),
             ],
             "multi_select": True,
+            "range": True,
+            "range_metric": "median_aqi",
+            "range_map": {
+                "pristine_air": (0, 35),
+                "good_air": (0, 50),
+                "air_not_factor": (0, 200),
+            },
+        },
+        {
+            "id": "city_fiscal_health",
+            "question": "City government fiscal health? (select all acceptable)",
+            "options": [
+                ("low_debt", "Low city debt (under $1,500/person)"),
+                ("moderate_debt", "Moderate debt OK (under $4,000/person)"),
+                ("fiscal_not_factor", "Not a factor"),
+            ],
+            "multi_select": True,
+            "range": True,
+            "range_metric": "debt_outstanding_pc",
+            "range_map": {
+                "low_debt": (0, 1500),
+                "moderate_debt": (0, 4000),
+                "fiscal_not_factor": (0, 99999),
+            },
         },
         {
             "id": "safety_priority",
@@ -488,7 +535,7 @@ QUIZ_QUESTIONS = {
 
 
 # Special question types that need custom rendering
-SLIDER_QUESTIONS = ["commute_preferences", "max_commute_time", "max_home_price"]
+SLIDER_QUESTIONS = ["commute_preferences", "max_commute_time", "max_home_price", "my_financials", "rent_budget"]
 
 
 def get_all_questions():
