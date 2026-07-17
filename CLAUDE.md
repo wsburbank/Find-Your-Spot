@@ -110,6 +110,11 @@ The City Explorer page (`pages/4_City_Explorer.py`) provides a standalone browsi
 - **Transportation** — walkability score, transit score, airport access, direct flight destinations
 - **Geography / Outdoors** — mountains, ocean, lakes, desert (checkboxes); ski resort access; ocean distance, mountain distance, hiking trails, mountain biking trails, camping areas, state parks, national parks, swimming access
 - **Culture / Entertainment** — museums, performing arts venues, concert venue capacity, pro sports teams, Broadway tour stop checkbox
+- **Population Trend** — 5-year growth rate, 10-year growth rate
+- **Restaurants / Food** — restaurants per 10K, bars per 10K, breweries per 10K
+- **Natural Disasters** — disaster declarations (20-year total)
+- **Healthcare** — preventable hospital stays, uninsured rate, obesity rate, diabetes rate, poor mental/physical health days, dental visits, annual checkups
+- **Water Quality** — water violation rate, population percentage affected by violations
 
 When new columns are added to the city dataset, corresponding sidebar filters must be added to this page.
 

@@ -606,6 +606,7 @@ def compute_city_counts(
 
     cl_lats = climbing["lat"].values if len(climbing) else np.array([])
     cl_lons = climbing["lon"].values if len(climbing) else np.array([])
+    cl_routes = climbing["total_climbs"].values if len(climbing) else np.array([])
 
     results = []
     for i, (_, city) in enumerate(cities.iterrows()):
@@ -639,12 +640,15 @@ def compute_city_counts(
         else:
             n_biking = 0
 
-        # Climbing areas within radius
+        # Climbing routes within radius (sum of routes from all areas in range)
         if len(cl_lats):
             cl_dists = _vectorized_haversine(lat, lon, cl_lats, cl_lons)
-            n_climbing = int(np.sum(cl_dists <= RADIUS_CLIMBING))
+            cl_mask = cl_dists <= RADIUS_CLIMBING
+            n_climbing_areas = int(np.sum(cl_mask))
+            n_climbing_routes = int(np.sum(cl_routes[cl_mask]))
         else:
-            n_climbing = 0
+            n_climbing_areas = 0
+            n_climbing_routes = 0
 
         results.append({
             "city_id": city["city_id"],
@@ -652,7 +656,8 @@ def compute_city_counts(
             "camping_areas_count": n_campgrounds,
             "hiking_trails_count": n_hiking,
             "mountain_biking_trails": n_biking,
-            "rock_climbing_areas_nearby": n_climbing,
+            "rock_climbing_areas_nearby": n_climbing_areas,
+            "climbing_routes_nearby": n_climbing_routes,
         })
 
         if (i + 1) % 100 == 0:

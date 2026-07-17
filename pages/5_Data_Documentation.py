@@ -44,6 +44,11 @@ This page documents all data fields in our city database and lets you explore th
 - **Outdoor Recreation**: PAD-US (state parks), USFS EDW + NPS (trails/campgrounds), OpenBeta (climbing)
 - **Demographics**: US Census ACS 2022 (diversity, age, education, health insurance)
 - **Entertainment**: Census CBP 2022 (venues), IMLS 2018 (museums), official league rosters (sports)
+- **Population Trend**: US Census Population Estimates Program (PEP) 2014-2024
+- **Restaurants & Food**: Census County Business Patterns 2022 (NAICS 722/312)
+- **Natural Disasters**: FEMA OpenFEMA Disaster Declarations 2004-2024
+- **Healthcare**: County Health Rankings 2024 + CDC PLACES 2023
+- **Water Quality**: EPA ECHO Safe Drinking Water Information System (SDWIS) 2025
 """)
 
 # Database overview
@@ -332,6 +337,7 @@ data_dict = {
         "hiking_trails_count": "Hiking trail segments within 50 miles — USFS EDW + NPS Public Trails",
         "mountain_biking_trails": "Bicycle-managed trail segments within 50 miles — USFS EDW + NPS Public Trails",
         "rock_climbing_areas_nearby": "Rock climbing areas within 75 miles — OpenBeta",
+        "climbing_routes_nearby": "Total climbing routes within 75 miles (route-weighted) — OpenBeta",
         "swimming_access": "Primary swimming access type (ocean/lake/pool) — derived",
     },
     "Transportation": {

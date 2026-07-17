@@ -23,6 +23,11 @@ Reads from:
   - data/air_quality.parquet (EPA AQI annual county summary 2024)
   - data/humidity.parquet (NOAA 1991-2020 average summer dew point)
   - data/gov_finances.parquet (Census of Govts municipal finance per capita FY2023)
+  - data/govfinance_balance_sheet.parquet (Reason Foundation ACFR balance sheet FY2023)
+  - data/population_trend.parquet (Census PEP 2014-2024 growth rates)
+  - data/restaurants.parquet (Census CBP 2022 restaurant/bar/brewery counts)
+  - data/disaster_risk.parquet (FEMA disaster declarations 2004-2024)
+  - data/healthcare.parquet (County Health Rankings + CDC PLACES health metrics)
 
 Output: data/cities.parquet (unified dataset for scoring)
 """
@@ -293,6 +298,14 @@ def main():
         log.info("Gov finances: %d/%d cities have data",
                  unified["police_spending_pc"].notna().sum(), len(unified))
 
+    # Merge GovFinance balance sheet data (Reason Foundation ACFR-derived FY2023)
+    gov_bs = load_dataset("govfinance_balance_sheet")
+    if gov_bs is not None:
+        bs_cols = [c for c in gov_bs.columns if c not in ("name", "state")]
+        unified = unified.merge(gov_bs[bs_cols], on="city_id", how="left")
+        log.info("GovFinance balance sheet: %d/%d cities have data",
+                 unified["total_liabilities_pc"].notna().sum(), len(unified))
+
     # Merge demographics data (Census ACS 2022 — diversity, age, education, employment)
     if demographics is not None:
         # Drop unemployment_rate from demographics — employment.parquet has
@@ -303,6 +316,55 @@ def main():
         unified = unified.merge(demographics[demo_cols], on="city_id", how="left")
         log.info("Demographics: %d/%d cities have data",
                  unified["diversity_index"].notna().sum(), len(unified))
+
+    # Merge population trend data (Census PEP 2014-2024)
+    pop_trend = load_dataset("population_trend")
+    if pop_trend is not None:
+        pt_cols = [c for c in pop_trend.columns if c not in ("name", "state")]
+        unified = unified.merge(pop_trend[pt_cols], on="city_id", how="left")
+        log.info("Population trend: %d/%d cities have 5yr growth data",
+                 unified["pop_growth_5yr"].notna().sum(), len(unified))
+
+    # Merge restaurant/food scene data (Census CBP 2022)
+    restaurants = load_dataset("restaurants")
+    if restaurants is not None:
+        rest_cols = [c for c in restaurants.columns if c not in ("name", "state")]
+        unified = unified.merge(restaurants[rest_cols], on="city_id", how="left")
+        for col in ["restaurants_fullservice", "restaurants_quickservice",
+                    "coffee_snack_bars", "bars", "breweries", "restaurants_total"]:
+            if col in unified.columns:
+                unified[col] = unified[col].fillna(0).astype(int)
+        log.info("Restaurants: %d/%d cities have data",
+                 (unified["restaurants_total"] > 0).sum(), len(unified))
+
+    # Merge disaster risk data (FEMA disaster declarations 2004-2024)
+    disaster = load_dataset("disaster_risk")
+    if disaster is not None:
+        dis_cols = [c for c in disaster.columns if c not in ("name", "state")]
+        unified = unified.merge(disaster[dis_cols], on="city_id", how="left")
+        log.info("Disaster risk: %d/%d cities have declaration data",
+                 unified["disaster_declarations_20yr"].notna().sum(), len(unified))
+
+    # Merge healthcare data (County Health Rankings + CDC PLACES)
+    healthcare = load_dataset("healthcare")
+    if healthcare is not None:
+        hc_cols = [c for c in healthcare.columns if c not in ("name", "state")]
+        # Avoid duplicating uninsured_rate if already present from demographics
+        if "uninsured_rate" in hc_cols and "pct_uninsured" in unified.columns:
+            hc_cols = [c for c in hc_cols if c != "uninsured_rate"]
+        unified = unified.merge(healthcare[hc_cols], on="city_id", how="left")
+        first_hc_col = next((c for c in hc_cols if c != "city_id"), None)
+        if first_hc_col:
+            log.info("Healthcare: %d/%d cities have data",
+                     unified[first_hc_col].notna().sum(), len(unified))
+
+    # Merge water quality data (EPA ECHO SDWIS)
+    water = load_dataset("water_quality")
+    if water is not None:
+        wq_cols = [c for c in water.columns if c not in ("name", "state")]
+        unified = unified.merge(water[wq_cols], on="city_id", how="left")
+        log.info("Water quality: %d/%d cities have data",
+                 unified["water_violation_rate"].notna().sum(), len(unified))
 
     # Add derived columns needed by scoring engine
     _add_derived_columns(unified)
@@ -332,6 +394,13 @@ def main():
         "median_aqi", "pct_good_days", "days_unhealthy_total",
         "police_spending_pc", "fire_spending_pc", "parks_spending_pc",
         "roads_spending_pc", "total_revenue_pc",
+        "total_liabilities_pc", "pension_liability_pc", "opeb_liability_pc",
+        "debt_ratio", "effective_interest_rate",
+        "pop_growth_5yr", "pop_growth_10yr",
+        "restaurants_total", "restaurants_per_10k", "bars_per_10k", "breweries",
+        "disaster_declarations_20yr",
+        "preventable_hospital_stays", "obesity_pct", "poor_mental_health_days_pct",
+        "water_violation_rate", "water_systems_with_violations",
     ]
     for col in key_cols:
         if col in unified.columns:
@@ -373,6 +442,20 @@ def _add_derived_columns(df: pd.DataFrame) -> None:
         df["swimming_access"] = np.where(
             df["has_ocean"], "ocean",
             np.where(lake_nearby, "lake", "pool")
+        )
+
+    # Effective interest rate: market-revealed cost of borrowing (proxy for credit quality)
+    # Derived from Census debt_interest_pc / debt_outstanding_pc
+    if "debt_interest_pc" in df.columns and "debt_outstanding_pc" in df.columns:
+        mask = (
+            df["debt_outstanding_pc"].notna()
+            & df["debt_interest_pc"].notna()
+            & (df["debt_outstanding_pc"] > 100)
+        )
+        rate = np.where(mask, df["debt_interest_pc"] / df["debt_outstanding_pc"], np.nan)
+        # Cap to reasonable range (0.1% to 15%); outside = data quality issue
+        df["effective_interest_rate"] = np.where(
+            (rate > 0.001) & (rate < 0.15), np.round(rate * 100, 2), np.nan
         )
 
     # University/college data now comes from real NCES IPEDS data

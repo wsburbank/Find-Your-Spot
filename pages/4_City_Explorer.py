@@ -155,6 +155,41 @@ nat_parks_range = _int_range_slider("National Parks within 100 mi", "national_pa
 swimming_options = ["Any"] + sorted(cities_df["swimming_access"].dropna().unique().tolist())
 swimming_filter = st.sidebar.selectbox("Swimming Access", swimming_options)
 
+# Population Trend
+st.sidebar.subheader("Population Trend")
+if "pop_growth_5yr" in cities_df.columns:
+    pop_growth_5yr_range = _range_slider("5-Year Growth (%)", "pop_growth_5yr", fmt="%.1f")
+if "pop_growth_10yr" in cities_df.columns:
+    pop_growth_10yr_range = _range_slider("10-Year Growth (%)", "pop_growth_10yr", fmt="%.1f")
+
+# Restaurants / Food Scene
+st.sidebar.subheader("Restaurants / Food")
+if "restaurants_per_10k" in cities_df.columns:
+    restaurants_per_10k_range = _range_slider("Restaurants per 10K", "restaurants_per_10k", fmt="%.0f")
+if "bars_per_10k" in cities_df.columns:
+    bars_per_10k_range = _range_slider("Bars per 10K", "bars_per_10k", fmt="%.0f")
+if "breweries" in cities_df.columns:
+    breweries_range = _int_range_slider("Breweries", "breweries")
+
+# Natural Disasters
+st.sidebar.subheader("Natural Disasters")
+if "disaster_declarations_20yr" in cities_df.columns:
+    disaster_range = _int_range_slider("Disaster Declarations (20yr)", "disaster_declarations_20yr")
+
+# Healthcare
+st.sidebar.subheader("Healthcare")
+if "preventable_hospital_stays" in cities_df.columns:
+    hospital_stays_range = _range_slider("Preventable Hospital Stays", "preventable_hospital_stays", fmt="%.0f")
+if "obesity_pct" in cities_df.columns:
+    obesity_range = _range_slider("Obesity Rate (%)", "obesity_pct", fmt="%.1f")
+if "poor_mental_health_days_pct" in cities_df.columns:
+    mental_health_range = _range_slider("Poor Mental Health Days (%)", "poor_mental_health_days_pct", fmt="%.1f")
+
+# Water Quality
+st.sidebar.subheader("Water Quality")
+if "water_violation_rate" in cities_df.columns:
+    water_viol_range = _range_slider("Violations/System/Year", "water_violation_rate", fmt="%.2f")
+
 # Culture / Entertainment
 st.sidebar.subheader("Culture / Entertainment")
 museums_range = _int_range_slider("Museums", "museums_count")
@@ -257,6 +292,36 @@ filtered_df = _between(filtered_df, "national_parks_within_100mi", nat_parks_ran
 if swimming_filter != "Any":
     filtered_df = filtered_df[filtered_df["swimming_access"] == swimming_filter]
 
+# Population Trend
+if "pop_growth_5yr" in cities_df.columns:
+    filtered_df = _between(filtered_df, "pop_growth_5yr", pop_growth_5yr_range)
+if "pop_growth_10yr" in cities_df.columns:
+    filtered_df = _between(filtered_df, "pop_growth_10yr", pop_growth_10yr_range)
+
+# Restaurants / Food
+if "restaurants_per_10k" in cities_df.columns:
+    filtered_df = _between(filtered_df, "restaurants_per_10k", restaurants_per_10k_range)
+if "bars_per_10k" in cities_df.columns:
+    filtered_df = _between(filtered_df, "bars_per_10k", bars_per_10k_range)
+if "breweries" in cities_df.columns:
+    filtered_df = _between(filtered_df, "breweries", breweries_range)
+
+# Natural Disasters
+if "disaster_declarations_20yr" in cities_df.columns:
+    filtered_df = _between(filtered_df, "disaster_declarations_20yr", disaster_range)
+
+# Healthcare
+if "preventable_hospital_stays" in cities_df.columns:
+    filtered_df = _between(filtered_df, "preventable_hospital_stays", hospital_stays_range)
+if "obesity_pct" in cities_df.columns:
+    filtered_df = _between(filtered_df, "obesity_pct", obesity_range)
+if "poor_mental_health_days_pct" in cities_df.columns:
+    filtered_df = _between(filtered_df, "poor_mental_health_days_pct", mental_health_range)
+
+# Water Quality
+if "water_violation_rate" in cities_df.columns:
+    filtered_df = _between(filtered_df, "water_violation_rate", water_viol_range)
+
 # Culture / Entertainment
 filtered_df = _between(filtered_df, "museums_count", museums_range)
 filtered_df = _between(filtered_df, "performing_arts_venues", performing_arts_range)
@@ -309,8 +374,58 @@ with tab1:
             "parks_spending_pc": "Parks Spending ($/capita)",
             "roads_spending_pc": "Roads Spending ($/capita)",
         }
+        if "climbing_routes_nearby" in filtered_df.columns:
+            numeric_columns["climbing_routes_nearby"] = "Climbing Routes Nearby"
         if "goods_rpp" in filtered_df.columns:
             numeric_columns["goods_rpp"] = "Goods Price Index (RPP)"
+        if "pop_growth_5yr" in filtered_df.columns:
+            numeric_columns["pop_growth_5yr"] = "5-Year Pop Growth (%)"
+        if "pop_growth_10yr" in filtered_df.columns:
+            numeric_columns["pop_growth_10yr"] = "10-Year Pop Growth (%)"
+        if "restaurants_per_10k" in filtered_df.columns:
+            numeric_columns["restaurants_per_10k"] = "Restaurants per 10K"
+        if "bars_per_10k" in filtered_df.columns:
+            numeric_columns["bars_per_10k"] = "Bars per 10K"
+        if "breweries" in filtered_df.columns:
+            numeric_columns["breweries"] = "Breweries"
+        if "disaster_declarations_20yr" in filtered_df.columns:
+            numeric_columns["disaster_declarations_20yr"] = "Disaster Declarations (20yr)"
+        if "water_violation_rate" in filtered_df.columns:
+            numeric_columns["water_violation_rate"] = "Water Violations/System/Year"
+        if "water_pop_pct_affected" in filtered_df.columns:
+            numeric_columns["water_pop_pct_affected"] = "Pop Affected by Water Violations (%)"
+        if "obesity_pct" in filtered_df.columns:
+            numeric_columns["obesity_pct"] = "Obesity Rate (%)"
+        if "diabetes_pct" in filtered_df.columns:
+            numeric_columns["diabetes_pct"] = "Diabetes Rate (%)"
+        if "poor_mental_health_days_pct" in filtered_df.columns:
+            numeric_columns["poor_mental_health_days_pct"] = "Poor Mental Health Days (%)"
+        if "poor_physical_health_days_pct" in filtered_df.columns:
+            numeric_columns["poor_physical_health_days_pct"] = "Poor Physical Health Days (%)"
+        if "preventable_hospital_stays" in filtered_df.columns:
+            numeric_columns["preventable_hospital_stays"] = "Preventable Hospital Stays"
+        if "dental_visit_pct" in filtered_df.columns:
+            numeric_columns["dental_visit_pct"] = "Dental Visit (%)"
+        if "annual_checkup_pct" in filtered_df.columns:
+            numeric_columns["annual_checkup_pct"] = "Annual Checkup (%)"
+        if "debt_outstanding_pc" in filtered_df.columns:
+            numeric_columns["debt_outstanding_pc"] = "Govt Debt ($/capita)"
+        if "total_revenue_pc" in filtered_df.columns:
+            numeric_columns["total_revenue_pc"] = "Govt Revenue ($/capita)"
+        if "effective_interest_rate" in filtered_df.columns:
+            numeric_columns["effective_interest_rate"] = "Govt Debt Interest Rate (%)"
+        if "fire_spending_pc" in filtered_df.columns:
+            numeric_columns["fire_spending_pc"] = "Fire Spending ($/capita)"
+        if "sewerage_spending_pc" in filtered_df.columns:
+            numeric_columns["sewerage_spending_pc"] = "Sewerage Spending ($/capita)"
+        if "health_hospital_spending_pc" in filtered_df.columns:
+            numeric_columns["health_hospital_spending_pc"] = "Health/Hospital Spending ($/capita)"
+        if "diversity_index" in filtered_df.columns:
+            numeric_columns["diversity_index"] = "Diversity Index"
+        if "mean_commute_minutes" in filtered_df.columns:
+            numeric_columns["mean_commute_minutes"] = "Mean Commute (min)"
+        if "poverty_rate" in filtered_df.columns:
+            numeric_columns["poverty_rate"] = "Poverty Rate (%)"
         if has_financials and "estimated_annual_taxes" in filtered_df.columns:
             numeric_columns["estimated_annual_taxes"] = "Estimated Annual Taxes ($)"
 
@@ -338,7 +453,12 @@ with tab1:
                          "avg_property_tax_rate", "state_income_tax_rate", "state_sales_tax_rate",
                          "estimated_annual_taxes", "median_aqi",
                          "ski_resort_distance_miles", "airport_distance_miles",
-                         "avg_temp_summer", "avg_temp_winter"]
+                         "avg_temp_summer", "avg_temp_winter",
+                         "disaster_declarations_20yr", "water_violation_rate",
+                         "water_pop_pct_affected", "obesity_pct", "diabetes_pct",
+                         "poor_mental_health_days_pct", "poor_physical_health_days_pct",
+                         "preventable_hospital_stays", "debt_outstanding_pc",
+                         "effective_interest_rate", "mean_commute_minutes", "poverty_rate"]
         color_scale = "RdYlGn_r" if color_col in red_when_high else "RdYlGn"
 
         # Normalize size column to 10-100 range for consistent dot sizing
@@ -504,6 +624,10 @@ with tab3:
             "airport_distance_miles", "nearest_hub_distance_miles",
             "ski_resort_distance_miles", "ocean_distance_miles", "mountain_distance_miles",
             "mean_commute_minutes", "estimated_annual_taxes",
+            "disaster_declarations_20yr", "water_violation_rate", "water_pop_pct_affected",
+            "water_systems_with_violations", "water_systems_health_violations",
+            "obesity_pct", "diabetes_pct", "poor_mental_health_days_pct",
+            "poor_physical_health_days_pct", "preventable_hospital_stays",
         }
         _NEUTRAL = {
             "lat", "lon", "fips_state", "fips_place", "fips_county",
@@ -669,6 +793,7 @@ with tab3:
                 ("Hiking Trails", "hiking_trails_count", "{}"),
                 ("Mountain Biking Trails", "mountain_biking_trails", "{}"),
                 ("Rock Climbing Areas", "rock_climbing_areas_nearby", "{}"),
+                ("Climbing Routes", "climbing_routes_nearby", "{:,}"),
                 ("Camping Areas", "camping_areas_count", "{}"),
                 ("State Parks Nearby", "state_parks_nearby", "{}"),
                 ("National Parks (100 mi)", "national_parks_within_100mi", "{}"),
@@ -706,6 +831,44 @@ with tab3:
                 ("Poverty Rate", "poverty_rate", "{:.1f}%"),
                 ("Uninsured (%)", "pct_uninsured", "{:.1f}%"),
                 ("Job Growth Rate", "job_growth_rate", "{:.1f}%"),
+                ("5-Year Pop Growth", "pop_growth_5yr", "{:+.1f}%"),
+                ("10-Year Pop Growth", "pop_growth_10yr", "{:+.1f}%"),
+            ], city1, city2)
+
+        with st.expander("Restaurants & Food"):
+            _render_rows([
+                ("Restaurants (Full-Service)", "restaurants_fullservice", "{:,}"),
+                ("Restaurants (Quick-Service)", "restaurants_quickservice", "{:,}"),
+                ("Coffee/Snack Bars", "coffee_snack_bars", "{:,}"),
+                ("Bars/Pubs", "bars", "{:,}"),
+                ("Breweries", "breweries", "{}"),
+                ("Restaurants per 10K", "restaurants_per_10k", "{:.1f}"),
+                ("Bars per 10K", "bars_per_10k", "{:.1f}"),
+            ], city1, city2)
+
+        with st.expander("Natural Disasters"):
+            _render_rows([
+                ("Disaster Declarations (20yr)", "disaster_declarations_20yr", "{}"),
+            ], city1, city2)
+
+        with st.expander("Healthcare & Wellness"):
+            _render_rows([
+                ("Preventable Hospital Stays", "preventable_hospital_stays", "{:.0f}"),
+                ("Obesity Rate (%)", "obesity_pct", "{:.1f}%"),
+                ("Diabetes Rate (%)", "diabetes_pct", "{:.1f}%"),
+                ("Poor Mental Health Days (%)", "poor_mental_health_days_pct", "{:.1f}%"),
+                ("Poor Physical Health Days (%)", "poor_physical_health_days_pct", "{:.1f}%"),
+                ("Annual Checkup (%)", "annual_checkup_pct", "{:.1f}%"),
+                ("Dental Visit (%)", "dental_visit_pct", "{:.1f}%"),
+            ], city1, city2)
+
+        with st.expander("Water Quality"):
+            _render_rows([
+                ("Water Systems (Total)", "water_systems_total", "{}"),
+                ("Systems with Violations", "water_systems_with_violations", "{}"),
+                ("Health Violations", "water_systems_health_violations", "{}"),
+                ("Violations/System/Year", "water_violation_rate", "{:.2f}"),
+                ("Pop Affected (%)", "water_pop_pct_affected", "{:.1f}%"),
             ], city1, city2)
 
         # Radar chart comparison

@@ -538,7 +538,7 @@ def _render_city_details():
         st.markdown(f"- Ski resort: {city['ski_resort_distance_miles']:.0f} miles")
         st.markdown(f"- Hiking trails: {city['hiking_trails_count']}")
         st.markdown(f"- Mountain biking: {city['mountain_biking_trails']} trails")
-        st.markdown(f"- Rock climbing areas: {city['rock_climbing_areas_nearby']}")
+        st.markdown(f"- Climbing routes nearby: {city.get('climbing_routes_nearby', city['rock_climbing_areas_nearby']):,}")
         st.markdown(f"- National parks (100mi): {city['national_parks_within_100mi']}")
         st.markdown(f"- State parks nearby: {city['state_parks_nearby']}")
 

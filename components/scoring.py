@@ -368,8 +368,8 @@ def score_outdoor_recreation(city, preferences):
             mtb = city["mountain_biking_trails"]
             activity_score += 25 if mtb >= 50 else (18 if mtb >= 20 else 10)
         if "rock_climbing" in summer_prefs:
-            rc = city["rock_climbing_areas_nearby"]
-            activity_score += 25 if rc >= 10 else (18 if rc >= 3 else 8)
+            rc = city.get("climbing_routes_nearby", city["rock_climbing_areas_nearby"])
+            activity_score += 25 if rc >= 500 else (18 if rc >= 100 else 8)
         if "swimming" in summer_prefs:
             if city["has_ocean"]:
                 activity_score += 25
