@@ -1,0 +1,423 @@
+[
+  {
+    "id": "fd5cb58ed676",
+    "title": "first try",
+    "timestamp": "2026-05-02T21:47:42.978707+00:00",
+    "questions_version": 29,
+    "quiz_answers": {
+      "temp_preference": [
+        "hot_mild",
+        "four_seasons"
+      ],
+      "humidity_preference": [
+        "moderate_humidity",
+        "low_humidity"
+      ],
+      "rain_preference": [
+        "occasional_rain",
+        "keep_dry"
+      ],
+      "sunshine_preference": [
+        "max_sunshine",
+        "moderate_sunshine",
+        "cloudy_cozy"
+      ],
+      "snow_preference": [
+        "ski_essential",
+        "light_snow"
+      ],
+      "city_size": [
+        "mid_size",
+        "small_city"
+      ],
+      "density_preference": [
+        "suburban",
+        "rural_access"
+      ],
+      "commute_preferences": {
+        "walk_bike_pref": 7,
+        "transit_pref": 8,
+        "driving_pref": 5
+      },
+      "max_commute_time": 20,
+      "max_home_price": 550000,
+      "bedrooms_needed": 3,
+      "housing_type": [],
+      "cost_of_living": [
+        "worth_paying",
+        "moderate_cost",
+        "keep_affordable"
+      ],
+      "tax_preference": [
+        "no_income_tax",
+        "sales_tax_friendly",
+        "balanced_tax"
+      ],
+      "property_tax_tolerance": [
+        "pay_for_services",
+        "moderate_tax",
+        "low_tax_essential"
+      ],
+      "winter_sports": [
+        "ski_1hr"
+      ],
+      "summer_activities": [
+        "hiking",
+        "mtb_trails",
+        "rock_climbing",
+        "swimming"
+      ],
+      "camping_nature": [
+        "parks_essential"
+      ],
+      "water_activities": [
+        "lake_recreation",
+        "river_activities"
+      ],
+      "nightlife": [
+        "restaurants_bars",
+        "quiet_evenings"
+      ],
+      "arts_culture": [],
+      "live_performance": [],
+      "sports_scene": [
+        "sports_not_factor"
+      ],
+      "food_scene": [],
+      "school_quality": [
+        "good_schools_nice"
+      ],
+      "college_proximity": [
+        "college_town_vibe",
+        "major_university",
+        "community_college"
+      ],
+      "family_friendliness": [
+        "great_schools",
+        "family_activities"
+      ],
+      "diversity": [
+        "diversity_not_factor"
+      ],
+      "job_market": [],
+      "airport_access": [
+        "regional_1hr"
+      ],
+      "community_health": [
+        "thriving_essential",
+        "stable_economy",
+        "up_and_coming"
+      ],
+      "safety_priority": [
+        "top_priority",
+        "important"
+      ],
+      "geography": [
+        "mountains",
+        "ocean_coast",
+        "lakes_rivers"
+      ],
+      "museums": [
+        "museums_some"
+      ],
+      "performing_arts": [
+        "some_theater"
+      ],
+      "concert_venues": [
+        "some_venues"
+      ]
+    },
+    "top_cities": [
+      {
+        "city_id": 658,
+        "name": "Burlington",
+        "state": "VT",
+        "lat": 44.491927,
+        "lon": -73.238882,
+        "population": 44646,
+        "region": "Northeast",
+        "total_score": 93.5,
+        "scores": {
+          "climate": 92.0,
+          "city_size": 70.6,
+          "cost_taxes": 100.0,
+          "outdoor": 95.8,
+          "lifestyle": 100.0,
+          "education": 100.0,
+          "practical": 95.8
+        },
+        "stats": {
+          "avg_temp_summer": 80.0,
+          "avg_temp_winter": 16.0,
+          "sunny_days": 206.0,
+          "cost_of_living_index": 160.9,
+          "median_home_price": 383300.0,
+          "no_income_tax": false,
+          "walkability_score": 82,
+          "crime_rate": 14.24
+        }
+      },
+      {
+        "city_id": 423,
+        "name": "Concord",
+        "state": "NH",
+        "lat": 43.232493,
+        "lon": -71.561252,
+        "population": 44049,
+        "region": "Northeast",
+        "total_score": 91.1,
+        "scores": {
+          "climate": 92.0,
+          "city_size": 74.3,
+          "cost_taxes": 100.0,
+          "outdoor": 95.8,
+          "lifestyle": 92.5,
+          "education": 100.0,
+          "practical": 83.3
+        },
+        "stats": {
+          "avg_temp_summer": 81.0,
+          "avg_temp_winter": 16.0,
+          "sunny_days": 196.0,
+          "cost_of_living_index": 125.4,
+          "median_home_price": 287600.0,
+          "no_income_tax": true,
+          "walkability_score": 59,
+          "crime_rate": 12.81
+        }
+      },
+      {
+        "city_id": 372,
+        "name": "Asheville",
+        "state": "NC",
+        "lat": 35.570972,
+        "lon": -82.552725,
+        "population": 93695,
+        "region": "South",
+        "total_score": 90.7,
+        "scores": {
+          "climate": 86.0,
+          "city_size": 79.9,
+          "cost_taxes": 100.0,
+          "outdoor": 87.5,
+          "lifestyle": 100.0,
+          "education": 100.0,
+          "practical": 81.2
+        },
+        "stats": {
+          "avg_temp_summer": 84.0,
+          "avg_temp_winter": 31.0,
+          "sunny_days": 203.0,
+          "cost_of_living_index": 148.2,
+          "median_home_price": 376800.0,
+          "no_income_tax": false,
+          "walkability_score": 73,
+          "crime_rate": 28.76
+        }
+      },
+      {
+        "city_id": 427,
+        "name": "Laconia",
+        "state": "NH",
+        "lat": 43.576535,
+        "lon": -71.482263,
+        "population": 16898,
+        "region": "Northeast",
+        "total_score": 90.4,
+        "scores": {
+          "climate": 71.0,
+          "city_size": 78.0,
+          "cost_taxes": 100.0,
+          "outdoor": 95.8,
+          "lifestyle": 92.5,
+          "education": 100.0,
+          "practical": 95.8
+        },
+        "stats": {
+          "avg_temp_summer": 80.0,
+          "avg_temp_winter": 15.0,
+          "sunny_days": 187.0,
+          "cost_of_living_index": 111.4,
+          "median_home_price": 251700.0,
+          "no_income_tax": true,
+          "walkability_score": 62,
+          "crime_rate": 12.81
+        }
+      },
+      {
+        "city_id": 661,
+        "name": "Rutland",
+        "state": "VT",
+        "lat": 43.60967,
+        "lon": -72.977788,
+        "population": 15819,
+        "region": "Northeast",
+        "total_score": 90.4,
+        "scores": {
+          "climate": 92.0,
+          "city_size": 82.9,
+          "cost_taxes": 92.0,
+          "outdoor": 97.5,
+          "lifestyle": 85.0,
+          "education": 100.0,
+          "practical": 83.3
+        },
+        "stats": {
+          "avg_temp_summer": 78.0,
+          "avg_temp_winter": 11.0,
+          "sunny_days": 200.0,
+          "cost_of_living_index": 77.9,
+          "median_home_price": 169700.0,
+          "no_income_tax": false,
+          "walkability_score": 73,
+          "crime_rate": 14.24
+        }
+      },
+      {
+        "city_id": 107,
+        "name": "Dakota Ridge",
+        "state": "CO",
+        "lat": 39.619223,
+        "lon": -105.135065,
+        "population": 34234,
+        "region": "West",
+        "total_score": 90.2,
+        "scores": {
+          "climate": 100.0,
+          "city_size": 67.9,
+          "cost_taxes": 90.0,
+          "outdoor": 87.5,
+          "lifestyle": 100.0,
+          "education": 100.0,
+          "practical": 86.2
+        },
+        "stats": {
+          "avg_temp_summer": 84.0,
+          "avg_temp_winter": 20.0,
+          "sunny_days": 261.0,
+          "cost_of_living_index": 209.8,
+          "median_home_price": 511800.0,
+          "no_income_tax": false,
+          "walkability_score": 80,
+          "crime_rate": 41.06
+        }
+      },
+      {
+        "city_id": 365,
+        "name": "Kalispell",
+        "state": "MT",
+        "lat": 48.216152,
+        "lon": -114.327645,
+        "population": 25473,
+        "region": "West",
+        "total_score": 90.0,
+        "scores": {
+          "climate": 100.0,
+          "city_size": 83.0,
+          "cost_taxes": 100.0,
+          "outdoor": 91.5,
+          "lifestyle": 85.0,
+          "education": 100.0,
+          "practical": 70.8
+        },
+        "stats": {
+          "avg_temp_summer": 78.0,
+          "avg_temp_winter": 17.0,
+          "sunny_days": 256.0,
+          "cost_of_living_index": 127.2,
+          "median_home_price": 340700.0,
+          "no_income_tax": false,
+          "walkability_score": 72,
+          "crime_rate": 29.32
+        }
+      },
+      {
+        "city_id": 559,
+        "name": "Rapid City",
+        "state": "SD",
+        "lat": 44.071071,
+        "lon": -103.217924,
+        "population": 75632,
+        "region": "Midwest",
+        "total_score": 89.9,
+        "scores": {
+          "climate": 100.0,
+          "city_size": 79.3,
+          "cost_taxes": 100.0,
+          "outdoor": 67.8,
+          "lifestyle": 92.5,
+          "education": 94.1,
+          "practical": 95.8
+        },
+        "stats": {
+          "avg_temp_summer": 81.0,
+          "avg_temp_winter": 17.0,
+          "sunny_days": 250.0,
+          "cost_of_living_index": 102.4,
+          "median_home_price": 244500.0,
+          "no_income_tax": true,
+          "walkability_score": 68,
+          "crime_rate": 22.81
+        }
+      },
+      {
+        "city_id": 450,
+        "name": "Santa Fe",
+        "state": "NM",
+        "lat": 35.661981,
+        "lon": -105.981815,
+        "population": 87617,
+        "region": "West",
+        "total_score": 89.7,
+        "scores": {
+          "climate": 100.0,
+          "city_size": 75.6,
+          "cost_taxes": 100.0,
+          "outdoor": 85.8,
+          "lifestyle": 100.0,
+          "education": 91.8,
+          "practical": 75.0
+        },
+        "stats": {
+          "avg_temp_summer": 84.0,
+          "avg_temp_winter": 19.0,
+          "sunny_days": 273.0,
+          "cost_of_living_index": 149.0,
+          "median_home_price": 370600.0,
+          "no_income_tax": false,
+          "walkability_score": 70,
+          "crime_rate": 45.62
+        }
+      },
+      {
+        "city_id": 461,
+        "name": "Albany",
+        "state": "NY",
+        "lat": 42.665745,
+        "lon": -73.798353,
+        "population": 99692,
+        "region": "Northeast",
+        "total_score": 89.3,
+        "scores": {
+          "climate": 92.0,
+          "city_size": 71.1,
+          "cost_taxes": 100.0,
+          "outdoor": 70.0,
+          "lifestyle": 100.0,
+          "education": 100.0,
+          "practical": 91.7
+        },
+        "stats": {
+          "avg_temp_summer": 82.0,
+          "avg_temp_winter": 19.0,
+          "sunny_days": 199.0,
+          "cost_of_living_index": 100.0,
+          "median_home_price": 213400.0,
+          "no_income_tax": false,
+          "walkability_score": 83,
+          "crime_rate": 19.19
+        }
+      }
+    ]
+  }
+]

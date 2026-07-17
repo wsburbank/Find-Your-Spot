@@ -1,11 +1,25 @@
 """
 Scoring Algorithm for Find Your Spot
 Matches user preferences to city attributes and returns ranked results.
+
+Range-based scoring
+-------------------
+Questions marked ``range=True`` in quiz_questions carry a ``range_map`` that
+maps each option value to a ``(low, high)`` interval in the city metric's
+units.  When the user selects multiple options the engine unions the intervals
+to form a single ``(min, max)`` window and then scores the city:
+
+* metric inside window            → full points
+* metric within 20 % of a boundary → partial (linearly tapered)
+* metric outside that buffer       → minimum points
 """
 
 import pandas as pd
 import numpy as np
 from pathlib import Path
+
+from components.quiz_questions import get_range_questions
+from utilities.tax_estimate import estimate_taxes
 
 
 def load_cities():
@@ -19,174 +33,135 @@ def load_cities():
     return pd.read_parquet(data_path)
 
 
+# Cache range question definitions once at import time.
+_RANGE_QUESTIONS: dict = {}
+
+
+def _get_range_questions() -> dict:
+    """Lazy-load and cache range question definitions."""
+    global _RANGE_QUESTIONS
+    if not _RANGE_QUESTIONS:
+        _RANGE_QUESTIONS = get_range_questions()
+    return _RANGE_QUESTIONS
+
+
+def _range_score(city_value: float, selections: list, range_map: dict,
+                 full: float = 25, partial: float = 15, miss: float = 5) -> float:
+    """Score a city metric against a user's range selections.
+
+    Args:
+        city_value: The city's actual value for the metric.
+        selections: List of selected option keys (e.g. ["keep_dry", "occasional_rain"]).
+        range_map: {option_key: (low, high)} from the question definition.
+        full: Points awarded when the value is inside the range.
+        partial: Points awarded when the value is near the range boundary.
+        miss: Points awarded when the value is outside the range.
+
+    Returns:
+        Score between *miss* and *full*.
+    """
+    if not selections:
+        return 0
+
+    # Union all selected intervals into one (min, max).
+    lows, highs = [], []
+    for sel in selections:
+        if sel in range_map:
+            lo, hi = range_map[sel]
+            lows.append(lo)
+            highs.append(hi)
+
+    if not lows:
+        return 0
+
+    range_min = min(lows)
+    range_max = max(highs)
+
+    if range_min <= city_value <= range_max:
+        return full
+
+    # 20% buffer for partial credit
+    span = max(range_max - range_min, 1)
+    buffer = span * 0.20
+    if (range_min - buffer) <= city_value <= (range_max + buffer):
+        return partial
+
+    return miss
+
+
+# -----------------------------------------------------------------------
+# Individual category scoring functions
+# -----------------------------------------------------------------------
+
 def score_climate(city, preferences):
     """Score city based on climate preferences (0-100)."""
     score = 0
     max_score = 0
 
-    # Temperature preference
-    temp_pref = preferences.get("temp_preference")
-    if temp_pref:
+    # Temperature preference (independent multi-select)
+    temp_prefs = preferences.get("temp_preference", [])
+    if isinstance(temp_prefs, str):
+        temp_prefs = [temp_prefs]
+    if temp_prefs:
         max_score += 25
         avg_summer = city["avg_temp_summer"]
         avg_winter = city["avg_temp_winter"]
-
-        if temp_pref == "hot_mild":
-            if avg_summer >= 85 and avg_winter >= 45:
-                score += 25
-            elif avg_summer >= 80 and avg_winter >= 35:
-                score += 18
-            else:
-                score += 8
-        elif temp_pref == "four_seasons":
+        matches = False
+        if "hot_mild" in temp_prefs and avg_summer >= 80 and avg_winter >= 35:
+            matches = True
+        if "four_seasons" in temp_prefs:
             temp_range = avg_summer - avg_winter
-            if 40 <= temp_range <= 60 and avg_winter < 40:
-                score += 25
-            elif 30 <= temp_range <= 70:
-                score += 18
-            else:
-                score += 8
-        elif temp_pref == "mild_year_round":
-            if 60 <= avg_summer <= 80 and avg_winter >= 40:
-                score += 25
-            elif avg_summer <= 85 and avg_winter >= 30:
-                score += 18
-            else:
-                score += 8
-        elif temp_pref == "love_cold":
-            if avg_winter < 25:
-                score += 25
-            elif avg_winter < 35:
-                score += 18
-            else:
-                score += 8
+            if 30 <= temp_range <= 70 and avg_winter < 40:
+                matches = True
+        if "mild_year_round" in temp_prefs and avg_summer <= 85 and avg_winter >= 30:
+            matches = True
+        if "love_cold" in temp_prefs and avg_winter < 35:
+            matches = True
+        score += 25 if matches else 8
 
-    # Humidity preference (using rainfall as proxy - higher rainfall = higher humidity generally)
-    humidity_pref = preferences.get("humidity_preference")
-    if humidity_pref:
+    # Humidity preference (range on avg_summer_dewpoint)
+    humidity_prefs = preferences.get("humidity_preference", [])
+    if isinstance(humidity_prefs, str):
+        humidity_prefs = [humidity_prefs]
+    if humidity_prefs:
         max_score += 20
-        rainfall = city["annual_rainfall"]
-        # Approximating humidity from rainfall and region
-        is_humid = rainfall > 40 or city["region"] in ["Southeast", "Midwest"]
-        is_dry = rainfall < 20 or city["region"] in ["Southwest", "Mountain"]
+        dewpoint = city.get("avg_summer_dewpoint")
+        if pd.notna(dewpoint):
+            rq = _get_range_questions().get("humidity_preference", {})
+            score += _range_score(dewpoint, humidity_prefs,
+                                  rq.get("range_map", {}), full=20, partial=12, miss=3)
+        else:
+            score += 10  # neutral when data missing
 
-        if humidity_pref == "low_humidity":
-            if is_dry:
-                score += 20
-            elif rainfall < 30:
-                score += 15
-            else:
-                score += 5
-        elif humidity_pref == "moderate_humidity":
-            if 20 <= rainfall <= 45:
-                score += 20
-            else:
-                score += 12
-        elif humidity_pref == "high_humidity":
-            if is_humid:
-                score += 20
-            else:
-                score += 10
-        elif humidity_pref == "humidity_not_factor":
-            score += 20
+    # Rain preference (range)
+    rain_prefs = preferences.get("rain_preference", [])
+    if isinstance(rain_prefs, str):
+        rain_prefs = [rain_prefs]
+    if rain_prefs:
+        max_score += 20
+        rq = _get_range_questions().get("rain_preference", {})
+        score += _range_score(city["annual_rainfall"], rain_prefs,
+                              rq.get("range_map", {}), full=20, partial=12, miss=3)
 
-    # Rain preference
-    rain_pref = preferences.get("rain_preference")
-    if rain_pref:
+    # Sunshine preference (range)
+    sun_prefs = preferences.get("sunshine_preference", [])
+    if isinstance(sun_prefs, str):
+        sun_prefs = [sun_prefs]
+    if sun_prefs:
+        max_score += 20
+        rq = _get_range_questions().get("sunshine_preference", {})
+        score += _range_score(city["sunny_days"], sun_prefs,
+                              rq.get("range_map", {}), full=20, partial=12, miss=3)
+
+    # Snow preference (range)
+    snow_prefs = preferences.get("snow_preference", [])
+    if isinstance(snow_prefs, str):
+        snow_prefs = [snow_prefs]
+    if snow_prefs:
         max_score += 15
-        rainfall = city["annual_rainfall"]
-
-        if rain_pref == "love_rain":
-            if rainfall >= 45:
-                score += 15
-            elif rainfall >= 35:
-                score += 10
-            else:
-                score += 5
-        elif rain_pref == "occasional_rain":
-            if 25 <= rainfall <= 45:
-                score += 15
-            else:
-                score += 8
-        elif rain_pref == "keep_dry":
-            if rainfall < 20:
-                score += 15
-            elif rainfall < 30:
-                score += 10
-            else:
-                score += 3
-        elif rain_pref == "monsoon":
-            if rainfall >= 50:
-                score += 15
-            elif rainfall >= 40:
-                score += 10
-            else:
-                score += 8
-
-    # Sunshine preference
-    sun_pref = preferences.get("sunshine_preference")
-    if sun_pref:
-        max_score += 20
-        sunny_days = city["sunny_days"]
-
-        if sun_pref == "max_sunshine":
-            if sunny_days >= 300:
-                score += 20
-            elif sunny_days >= 260:
-                score += 15
-            elif sunny_days >= 220:
-                score += 8
-            else:
-                score += 3
-        elif sun_pref == "moderate_sunshine":
-            if 200 <= sunny_days <= 280:
-                score += 20
-            else:
-                score += 12
-        elif sun_pref == "cloudy_cozy":
-            if sunny_days < 200:
-                score += 20
-            elif sunny_days < 240:
-                score += 15
-            else:
-                score += 8
-        elif sun_pref == "dont_care_sun":
-            score += 20
-
-    # Snow preference
-    snow_pref = preferences.get("snow_preference")
-    if snow_pref:
-        max_score += 20
-        snow = city["annual_snow"]
-
-        if snow_pref == "ski_essential":
-            if snow >= 50:
-                score += 20
-            elif snow >= 30:
-                score += 15
-            elif snow >= 10:
-                score += 8
-            else:
-                score += 3
-        elif snow_pref == "light_snow":
-            if 5 <= snow <= 30:
-                score += 20
-            elif snow < 50:
-                score += 15
-            else:
-                score += 8
-        elif snow_pref == "no_snow":
-            if snow < 5:
-                score += 20
-            elif snow < 15:
-                score += 12
-            else:
-                score += 3
-        elif snow_pref == "occasional_snow":
-            if 10 <= snow <= 40:
-                score += 20
-            else:
-                score += 12
+        rq = _get_range_questions().get("snow_preference", {})
+        score += _range_score(city["annual_snow"], snow_prefs,
+                              rq.get("range_map", {}), full=15, partial=9, miss=2)
 
     return (score / max_score * 100) if max_score > 0 else 0
 
@@ -196,96 +171,78 @@ def score_city_size(city, preferences):
     score = 0
     max_score = 0
 
-    # City size preference (now multi-select)
+    # City size preference (independent multi-select)
     size_prefs = preferences.get("city_size", [])
     if isinstance(size_prefs, str):
         size_prefs = [size_prefs]
-
     if size_prefs:
         max_score += 40
         pop = city["population"]
-
-        # Check if city matches ANY of the selected size preferences
         matches = False
         if "big_metro" in size_prefs and pop >= 1000000:
             matches = True
-        if "mid_size" in size_prefs and 100000 <= pop < 1000000:
+        if "large_city" in size_prefs and 100000 <= pop < 1000000:
             matches = True
-        if "small_city" in size_prefs and 25000 <= pop < 100000:
+        if "mid_size" in size_prefs and 30000 <= pop < 100000:
             matches = True
-        if "small_town" in size_prefs and pop < 25000:
+        if "small_city" in size_prefs and 15000 <= pop < 30000:
             matches = True
+        if "small_town" in size_prefs and pop < 15000:
+            matches = True
+        score += 40 if matches else 10
 
-        if matches:
-            score += 40
-        else:
-            # Partial score for close matches
-            if "mid_size" in size_prefs and (50000 <= pop < 100000 or 1000000 <= pop < 1500000):
-                score += 25
-            elif "small_city" in size_prefs and (10000 <= pop < 25000 or 100000 <= pop < 150000):
-                score += 25
-            else:
-                score += 10
-
-    # Density preference
-    density_pref = preferences.get("density_preference")
-    if density_pref:
+    # Density preference (range)
+    density_prefs = preferences.get("density_preference", [])
+    if isinstance(density_prefs, str):
+        density_prefs = [density_prefs]
+    if density_prefs:
         max_score += 30
-        walkability = city["walkability_score"]
+        rq = _get_range_questions().get("density_preference", {})
+        score += _range_score(city["walkability_score"], density_prefs,
+                              rq.get("range_map", {}), full=30, partial=18, miss=8)
 
-        if density_pref == "urban_jungle":
-            if walkability >= 80:
-                score += 30
-            elif walkability >= 60:
-                score += 20
-            else:
-                score += 10
-        elif density_pref == "suburban":
-            if 40 <= walkability <= 70:
-                score += 30
-            else:
-                score += 15
-        elif density_pref == "rural_access":
-            if walkability < 50:
-                score += 30
-            elif walkability < 70:
-                score += 20
-            else:
-                score += 10
-        elif density_pref == "off_grid":
-            if walkability < 30:
-                score += 30
-            elif walkability < 50:
-                score += 20
-            else:
-                score += 10
-
-    # Commute preferences (slider-based)
+    # Commute preferences (slider-based — unchanged)
     commute_prefs = preferences.get("commute_preferences", {})
     if commute_prefs:
         max_score += 30
         walk = city["walkability_score"]
         transit = city["transit_score"]
-
         walk_pref = commute_prefs.get("walk_bike_pref", 5)
         transit_pref = commute_prefs.get("transit_pref", 5)
         driving_pref = commute_prefs.get("driving_pref", 5)
 
         commute_score = 0
-
-        # Score based on how well city matches commute preferences
         if walk_pref >= 7:
             commute_score += (walk / 100) * 10 * (walk_pref / 10)
         if transit_pref >= 7:
             commute_score += (transit / 100) * 10 * (transit_pref / 10)
         if driving_pref >= 7:
-            # Smaller cities are better for driving
             drive_score = 100 - min(100, city["population"] / 50000)
             commute_score += (drive_score / 100) * 10 * (driving_pref / 10)
 
-        # Normalize
         total_weight = max(1, (walk_pref + transit_pref + driving_pref) / 10)
         score += min(30, commute_score / total_weight * 3)
+
+    # Max commute time (slider — scored against Census ACS mean_commute_minutes)
+    max_commute = preferences.get("max_commute_time")
+    if max_commute:
+        max_score += 25
+        mean_commute = city.get("mean_commute_minutes")
+        if pd.isna(mean_commute):
+            score += 12  # neutral when data is missing
+        elif mean_commute <= max_commute:
+            # Under budget — closer to the limit gets slightly less
+            ratio = mean_commute / max_commute
+            score += 25 if ratio <= 0.8 else 20
+        else:
+            # Over the user's max — penalize proportionally
+            over_ratio = mean_commute / max_commute
+            if over_ratio <= 1.15:
+                score += 15
+            elif over_ratio <= 1.30:
+                score += 10
+            else:
+                score += 5
 
     return (score / max_score * 100) if max_score > 0 else 0
 
@@ -295,14 +252,12 @@ def score_cost_taxes(city, preferences):
     score = 0
     max_score = 0
 
-    # Max home price (slider-based)
+    # Max home price (slider)
     max_price = preferences.get("max_home_price")
     if max_price:
         max_score += 30
         home_price = city["median_home_price"]
-
         if home_price <= max_price:
-            # Full score if under budget, bonus for being well under
             budget_ratio = home_price / max_price
             if budget_ratio <= 0.7:
                 score += 30
@@ -311,7 +266,6 @@ def score_cost_taxes(city, preferences):
             else:
                 score += 20
         else:
-            # Partial score if over budget
             over_ratio = home_price / max_price
             if over_ratio <= 1.1:
                 score += 15
@@ -320,96 +274,67 @@ def score_cost_taxes(city, preferences):
             else:
                 score += 5
 
-    # Overall cost of living
-    col_pref = preferences.get("cost_of_living")
-    if col_pref:
+    # Cost of living (range)
+    col_prefs = preferences.get("cost_of_living", [])
+    if isinstance(col_prefs, str):
+        col_prefs = [col_prefs]
+    if col_prefs:
         max_score += 20
-        col_index = city["cost_of_living_index"]
+        rq = _get_range_questions().get("cost_of_living", {})
+        score += _range_score(city["cost_of_living_index"], col_prefs,
+                              rq.get("range_map", {}), full=20, partial=12, miss=4)
 
-        if col_pref == "worth_paying":
-            score += 20
-        elif col_pref == "moderate_cost":
-            if col_index <= 115:
-                score += 20
-            elif col_index <= 130:
-                score += 15
-            else:
-                score += 8
-        elif col_pref == "keep_affordable":
-            if col_index <= 100:
-                score += 20
-            elif col_index <= 110:
-                score += 15
-            else:
-                score += 6
-        elif col_pref == "cheapest":
-            if col_index <= 90:
-                score += 20
-            elif col_index <= 100:
-                score += 15
-            else:
-                score += 4
-
-    # Tax preference
-    tax_pref = preferences.get("tax_preference")
-    if tax_pref:
+    # Tax preference (independent multi-select)
+    tax_prefs = preferences.get("tax_preference", [])
+    if isinstance(tax_prefs, str):
+        tax_prefs = [tax_prefs]
+    if tax_prefs:
         max_score += 25
         no_income = city["no_income_tax_state"]
         income_tax = city["state_income_tax_rate"]
         property_tax = city["avg_property_tax_rate"]
         sales_tax = city["state_sales_tax_rate"]
 
-        if tax_pref == "no_income_tax":
-            if no_income:
-                score += 25
-            elif income_tax < 4:
-                score += 15
-            else:
-                score += 5
-        elif tax_pref == "low_property_tax":
-            if property_tax < 1:
-                score += 25
-            elif property_tax < 1.5:
-                score += 18
-            else:
-                score += 8
-        elif tax_pref == "sales_tax_friendly":
-            if sales_tax < 5:
-                score += 25
-            elif sales_tax < 7:
-                score += 18
-            else:
-                score += 10
-        elif tax_pref == "balanced_tax":
-            if income_tax < 7 and property_tax < 2 and sales_tax < 8:
-                score += 25
-            else:
-                score += 15
-        elif tax_pref == "dont_care_tax":
-            score += 25
+        best = 5  # minimum
+        if "dont_care_tax" in tax_prefs:
+            best = 25
+        if "no_income_tax" in tax_prefs and no_income:
+            best = max(best, 25)
+        elif "no_income_tax" in tax_prefs and income_tax < 4:
+            best = max(best, 15)
+        if "low_property_tax" in tax_prefs and property_tax < 1:
+            best = max(best, 25)
+        elif "low_property_tax" in tax_prefs and property_tax < 1.5:
+            best = max(best, 18)
+        if "sales_tax_friendly" in tax_prefs and sales_tax < 5:
+            best = max(best, 25)
+        elif "sales_tax_friendly" in tax_prefs and sales_tax < 7:
+            best = max(best, 18)
+        if "balanced_tax" in tax_prefs and income_tax < 7 and property_tax < 2 and sales_tax < 8:
+            best = max(best, 25)
+        score += best
 
-    # Property tax tolerance
-    prop_tax_pref = preferences.get("property_tax_tolerance")
-    if prop_tax_pref:
+    # Rent budget (slider)
+    max_rent = preferences.get("rent_budget")
+    if max_rent:
         max_score += 25
-        property_tax = city["avg_property_tax_rate"]
-
-        if prop_tax_pref == "low_tax_essential":
-            if property_tax < 1:
+        median_rent = city["median_gross_rent"]
+        if median_rent <= max_rent:
+            budget_ratio = median_rent / max_rent
+            if budget_ratio <= 0.7:
                 score += 25
-            elif property_tax < 1.5:
-                score += 15
-            else:
-                score += 5
-        elif prop_tax_pref == "moderate_tax":
-            if 1 <= property_tax <= 2:
-                score += 25
+            elif budget_ratio <= 0.85:
+                score += 20
             else:
                 score += 15
-        elif prop_tax_pref == "pay_for_services":
-            score += 25
-        elif prop_tax_pref == "not_factor":
-            score += 25
+        else:
+            over_ratio = median_rent / max_rent
+            if over_ratio <= 1.15:
+                score += 12
+            elif over_ratio <= 1.3:
+                score += 8
+            else:
+                score += 3
 
     return (score / max_score * 100) if max_score > 0 else 0
 
@@ -419,110 +344,62 @@ def score_outdoor_recreation(city, preferences):
     score = 0
     max_score = 0
 
-    # Winter sports
-    winter_pref = preferences.get("winter_sports")
-    if winter_pref:
+    # Winter sports (range on ski distance)
+    winter_prefs = preferences.get("winter_sports", [])
+    if isinstance(winter_prefs, str):
+        winter_prefs = [winter_prefs]
+    if winter_prefs:
         max_score += 30
-        ski_dist = city["ski_resort_distance_miles"]
+        rq = _get_range_questions().get("winter_sports", {})
+        score += _range_score(city["ski_resort_distance_miles"], winter_prefs,
+                              rq.get("range_map", {}), full=30, partial=18, miss=8)
 
-        if winter_pref == "ski_1hr":
-            if ski_dist <= 60:
-                score += 30
-            elif ski_dist <= 100:
-                score += 20
-            else:
-                score += 5
-        elif winter_pref == "ski_daytrip":
-            if ski_dist <= 180:
-                score += 30
-            elif ski_dist <= 300:
-                score += 20
-            else:
-                score += 10
-        elif winter_pref == "no_skiing":
-            score += 30
-        elif winter_pref == "hate_cold_sports":
-            if city["annual_snow"] < 10:
-                score += 30
-            else:
-                score += 15
-
-    # Summer activities (multi-select, no "all of the above")
+    # Summer activities (independent multi-select)
     summer_prefs = preferences.get("summer_activities", [])
     if summer_prefs:
         max_score += 25
         activity_score = 0
         activity_count = len(summer_prefs)
 
-        if "mtb_trails" in summer_prefs:
-            if city["mountain_biking_trails"] >= 50:
-                activity_score += 25
-            elif city["mountain_biking_trails"] >= 20:
-                activity_score += 18
-            else:
-                activity_score += 10
-
-        if "rock_climbing" in summer_prefs:
-            if city["rock_climbing_areas_nearby"] >= 10:
-                activity_score += 25
-            elif city["rock_climbing_areas_nearby"] >= 3:
-                activity_score += 18
-            else:
-                activity_score += 8
-
-        if "swimming" in summer_prefs:
-            if city["swimming_access"] in ["ocean", "lake"]:
-                activity_score += 25
-            else:
-                activity_score += 15
-
         if "hiking" in summer_prefs:
-            if city["hiking_trails_count"] >= 100:
+            trails = city["hiking_trails_count"]
+            activity_score += 25 if trails >= 100 else (18 if trails >= 30 else 10)
+        if "mtb_trails" in summer_prefs:
+            mtb = city["mountain_biking_trails"]
+            activity_score += 25 if mtb >= 50 else (18 if mtb >= 20 else 10)
+        if "rock_climbing" in summer_prefs:
+            rc = city.get("climbing_routes_nearby", city["rock_climbing_areas_nearby"])
+            activity_score += 25 if rc >= 500 else (18 if rc >= 100 else 8)
+        if "swimming" in summer_prefs:
+            if city["has_ocean"]:
                 activity_score += 25
-            elif city["hiking_trails_count"] >= 30:
-                activity_score += 18
             else:
-                activity_score += 10
-
+                lake_mi = city["nearest_boatable_lake_miles"]
+                activity_score += 25 if lake_mi < 30 else (18 if lake_mi < 60 else 12)
         if "golf" in summer_prefs:
-            # Most places have golf courses
             activity_score += 20
-
         if "fishing" in summer_prefs:
-            if city["has_lakes"] or city["has_ocean"]:
+            if city["has_ocean"]:
                 activity_score += 25
             else:
-                activity_score += 15
+                lake_mi = city["nearest_boatable_lake_miles"]
+                activity_score += 25 if lake_mi < 30 else (18 if lake_mi < 60 else 10)
 
         if activity_count > 0:
             score += activity_score / activity_count
 
-    # Camping & nature
-    camping_pref = preferences.get("camping_nature")
-    if camping_pref:
+    # Camping & nature (range on total parks)
+    camping_prefs = preferences.get("camping_nature", [])
+    if isinstance(camping_prefs, str):
+        camping_prefs = [camping_prefs]
+    if camping_prefs:
         max_score += 20
-        parks = city["national_parks_within_100mi"] + city["state_parks_nearby"]
+        parks_total = city["national_parks_within_100mi"] + city["state_parks_nearby"]
+        rq = _get_range_questions().get("camping_nature", {})
+        score += _range_score(parks_total, camping_prefs,
+                              rq.get("range_map", {}), full=20, partial=14, miss=8)
 
-        if camping_pref == "parks_essential":
-            if parks >= 5:
-                score += 20
-            elif parks >= 2:
-                score += 15
-            else:
-                score += 8
-        elif camping_pref == "some_campgrounds":
-            if city["camping_areas_count"] >= 20:
-                score += 20
-            elif city["camping_areas_count"] >= 10:
-                score += 15
-            else:
-                score += 10
-        elif camping_pref == "car_camping":
-            score += 20
-        elif camping_pref == "not_into_camping":
-            score += 20
-
-    # Water activities (multi-select)
+    # Water activities (independent multi-select)
     water_prefs = preferences.get("water_activities", [])
     if water_prefs:
         max_score += 25
@@ -530,23 +407,19 @@ def score_outdoor_recreation(city, preferences):
         water_count = len(water_prefs)
 
         if "ocean_beach" in water_prefs:
-            if city["has_ocean"]:
-                water_score += 25
-            else:
-                water_score += 5
-
+            water_score += 25 if city["has_ocean"] else 5
         if "lake_recreation" in water_prefs:
-            if city["has_lakes"]:
+            lake_mi = city["nearest_boatable_lake_miles"]
+            if lake_mi < 20:
                 water_score += 25
+            elif lake_mi < 40:
+                water_score += 20
+            elif lake_mi < 60:
+                water_score += 15
             else:
-                water_score += 10
-
+                water_score += 8
         if "river_activities" in water_prefs:
             water_score += 20
-
-        if "pool_enough" in water_prefs:
-            water_score += 25
-
         if "water_not_priority" in water_prefs:
             water_score += 25
 
@@ -561,125 +434,49 @@ def score_lifestyle(city, preferences):
     score = 0
     max_score = 0
 
-    # Nightlife
-    nightlife_pref = preferences.get("nightlife")
-    if nightlife_pref:
+    # Museums (range on museums_count — IMLS real data)
+    museum_prefs = preferences.get("museums", [])
+    if isinstance(museum_prefs, str):
+        museum_prefs = [museum_prefs]
+    if museum_prefs:
         max_score += 20
-        pop = city["population"]
-        venues = city["performing_arts_venues"]
+        rq = _get_range_questions().get("museums", {})
+        score += _range_score(city["museums_count"], museum_prefs,
+                              rq.get("range_map", {}), full=20, partial=14, miss=8)
 
-        if nightlife_pref == "vibrant_clubs":
-            if pop >= 500000 and venues >= 30:
-                score += 20
-            elif pop >= 200000:
-                score += 15
-            else:
-                score += 8
-        elif nightlife_pref == "restaurants_bars":
-            if pop >= 100000:
-                score += 20
-            elif pop >= 50000:
-                score += 15
-            else:
-                score += 10
-        elif nightlife_pref == "occasional_night":
-            score += 20
-        elif nightlife_pref == "quiet_evenings":
-            if pop < 200000:
-                score += 20
-            else:
-                score += 15
-
-    # Arts & culture
-    arts_pref = preferences.get("arts_culture")
-    if arts_pref:
+    # Performing arts (range on performing_arts_venues — Census CBP)
+    arts_prefs = preferences.get("performing_arts", [])
+    if isinstance(arts_prefs, str):
+        arts_prefs = [arts_prefs]
+    if arts_prefs:
         max_score += 20
-        museums = city["museums_count"]
+        rq = _get_range_questions().get("performing_arts", {})
+        score += _range_score(city["performing_arts_venues"], arts_prefs,
+                              rq.get("range_map", {}), full=20, partial=14, miss=8)
 
-        if arts_pref == "museums_essential":
-            if museums >= 50:
-                score += 20
-            elif museums >= 20:
-                score += 15
-            else:
-                score += 8
-        elif arts_pref == "nice_to_have":
-            if museums >= 10:
-                score += 20
-            else:
-                score += 15
-        elif arts_pref == "not_priority":
-            score += 20
-
-    # Live performances
-    live_pref = preferences.get("live_performance")
-    if live_pref:
+    # Concert venues (range on concert_venue_count — Census CBP)
+    concert_prefs = preferences.get("concert_venues", [])
+    if isinstance(concert_prefs, str):
+        concert_prefs = [concert_prefs]
+    if concert_prefs:
         max_score += 20
-        broadway = city["broadway_tour_stop"]
-        capacity = city["concert_venue_capacity"]
+        rq = _get_range_questions().get("concert_venues", {})
+        score += _range_score(city["concert_venue_count"], concert_prefs,
+                              rq.get("range_map", {}), full=20, partial=14, miss=8)
 
-        if live_pref == "broadway_essential":
-            if broadway and capacity >= 10000:
-                score += 20
-            elif broadway or capacity >= 5000:
-                score += 12
-            else:
-                score += 5
-        elif live_pref == "local_venues":
-            if city["performing_arts_venues"] >= 10:
-                score += 20
-            else:
-                score += 15
-        elif live_pref == "occasional_shows":
-            score += 20
-        elif live_pref == "not_important":
-            score += 20
-
-    # Sports scene
-    sports_pref = preferences.get("sports_scene")
-    if sports_pref:
+    # Sports scene (range on major_pro_teams — Wikipedia real data)
+    sports_prefs = preferences.get("sports_scene", [])
+    if isinstance(sports_prefs, str):
+        sports_prefs = [sports_prefs]
+    if sports_prefs:
         max_score += 20
-        pro_teams = city["pro_sports_teams"]
-
-        if sports_pref == "pro_teams":
-            if pro_teams >= 3:
-                score += 20
-            elif pro_teams >= 1:
-                score += 15
-            else:
-                score += 5
-        elif sports_pref == "college_sports":
-            if city["has_major_university"]:
-                score += 20
-            elif city["university_count"] >= 1:
-                score += 15
-            else:
-                score += 10
-        elif sports_pref == "recreation_leagues":
-            score += 20
-        elif sports_pref == "not_into_sports":
-            score += 20
-
-    # Food scene
-    food_pref = preferences.get("food_scene")
-    if food_pref:
-        max_score += 20
-        pop = city["population"]
-
-        if food_pref == "foodie_paradise":
-            if pop >= 500000:
-                score += 20
-            elif pop >= 200000:
-                score += 15
-            else:
-                score += 10
-        elif food_pref == "good_variety":
-            if pop >= 50000:
-                score += 20
-            else:
-                score += 15
-        elif food_pref == "basics_fine":
-            score += 20
+        rq = _get_range_questions().get("sports_scene", {})
+        base = _range_score(city["major_pro_teams"], sports_prefs,
+                            rq.get("range_map", {}), full=20, partial=14, miss=8)
+        # Credit minor league presence if user selected that option
+        if "minor_league" in sports_prefs and city["minor_pro_teams"] > 0:
+            base = max(base, 18)
+        score += base
 
     return (score / max_score * 100) if max_score > 0 else 0
 
@@ -689,122 +486,68 @@ def score_education(city, preferences):
     score = 0
     max_score = 0
 
-    # School quality
-    school_pref = preferences.get("school_quality")
-    if school_pref:
+    # School quality (range on avg_school_rating — requires school_ratings data)
+    school_prefs = preferences.get("school_quality", [])
+    if isinstance(school_prefs, str):
+        school_prefs = [school_prefs]
+    if school_prefs:
         max_score += 25
-        school_rating = city["avg_school_rating"]
+        school_rating = city.get("avg_school_rating")
+        if pd.notna(school_rating):
+            rq = _get_range_questions().get("school_quality", {})
+            score += _range_score(school_rating, school_prefs,
+                                  rq.get("range_map", {}), full=25, partial=18, miss=10)
+        else:
+            score += 12  # neutral score when data missing
 
-        if school_pref == "top_schools_essential":
-            if school_rating >= 8:
-                score += 25
-            elif school_rating >= 7:
-                score += 18
-            else:
-                score += 10
-        elif school_pref == "good_schools_nice":
-            if school_rating >= 6:
-                score += 25
-            else:
-                score += 18
-        elif school_pref == "schools_not_factor":
-            score += 25
-
-    # College proximity
-    college_pref = preferences.get("college_proximity")
-    if college_pref:
+    # College proximity (independent multi-select — real IPEDS data)
+    college_prefs = preferences.get("college_proximity", [])
+    if isinstance(college_prefs, str):
+        college_prefs = [college_prefs]
+    if college_prefs:
         max_score += 20
-        has_uni = city["has_major_university"]
-        uni_count = city["university_count"]
-        cc = city["community_college_nearby"]
+        best = 8
+        if "college_doesnt_matter" in college_prefs or "no_college_fine" in college_prefs:
+            best = 20
+        if "major_university" in college_prefs and city["has_major_university"]:
+            best = max(best, 20)
+        elif "major_university" in college_prefs and city["university_count"] >= 1:
+            best = max(best, 15)
+        if "community_college" in college_prefs and city["has_community_college"]:
+            best = max(best, 20)
+        if "college_town_vibe" in college_prefs and city["college_town_score"] >= 0.15:
+            best = max(best, 20)
+        elif "college_town_vibe" in college_prefs and city["college_town_score"] >= 0.05:
+            best = max(best, 15)
+        score += best
 
-        if college_pref == "major_university":
-            if has_uni:
-                score += 20
-            elif uni_count >= 1:
-                score += 15
-            else:
-                score += 8
-        elif college_pref == "community_college":
-            if cc:
-                score += 20
-            else:
-                score += 12
-        elif college_pref == "college_town_vibe":
-            if has_uni and city["population"] < 300000:
-                score += 20
-            elif uni_count >= 1:
-                score += 15
-            else:
-                score += 10
-        elif college_pref == "college_doesnt_matter":
-            score += 20
-
-    # College town vibes
-    vibes_pref = preferences.get("college_town_vibes")
-    if vibes_pref:
-        max_score += 15
-        has_uni = city["has_major_university"]
-        pop = city["population"]
-
-        if vibes_pref == "love_university_energy":
-            if has_uni and pop < 500000:
-                score += 15
-            elif has_uni:
-                score += 12
-            else:
-                score += 8
-        elif vibes_pref == "vibes_dont_matter":
-            score += 15
-        elif vibes_pref == "prefer_established":
-            if not has_uni or pop >= 500000:
-                score += 15
-            else:
-                score += 10
-
-    # Family-friendliness
-    family_pref = preferences.get("family_friendliness")
-    if family_pref:
+    # Remote work culture (range on pct_work_from_home)
+    remote_prefs = preferences.get("remote_work", [])
+    if isinstance(remote_prefs, str):
+        remote_prefs = [remote_prefs]
+    if remote_prefs:
         max_score += 20
-        school_rating = city["avg_school_rating"]
-        crime = city["crime_rate_per_1000"]
+        wfh = city.get("pct_work_from_home")
+        if pd.notna(wfh):
+            rq = _get_range_questions().get("remote_work", {})
+            score += _range_score(wfh, remote_prefs,
+                                  rq.get("range_map", {}), full=20, partial=12, miss=5)
+        else:
+            score += 10
 
-        if family_pref == "great_schools":
-            if school_rating >= 7.5 and crime < 30:
-                score += 20
-            elif school_rating >= 6.5:
-                score += 15
-            else:
-                score += 10
-        elif family_pref == "family_activities":
-            if city["state_parks_nearby"] >= 5:
-                score += 20
-            else:
-                score += 15
-        elif family_pref == "adult_focused":
-            if city["population"] >= 200000:
-                score += 20
-            else:
-                score += 15
-        elif family_pref == "no_family_preference":
-            score += 20
-
-    # Diversity
-    diversity_pref = preferences.get("diversity")
-    if diversity_pref:
+    # Diversity (range on diversity_index)
+    diversity_prefs = preferences.get("diversity", [])
+    if isinstance(diversity_prefs, str):
+        diversity_prefs = [diversity_prefs]
+    if diversity_prefs:
         max_score += 20
-        pop = city["population"]
-        is_diverse = pop >= 200000
-
-        if diversity_pref == "very_diverse":
-            if is_diverse:
-                score += 20
-            else:
-                score += 12
-        elif diversity_pref == "moderate_diversity":
-            score += 20
-        elif diversity_pref == "diversity_not_factor":
-            score += 20
+        div_index = city.get("diversity_index")
+        if pd.notna(div_index):
+            rq = _get_range_questions().get("diversity", {})
+            score += _range_score(div_index, diversity_prefs,
+                                  rq.get("range_map", {}), full=20, partial=12, miss=5)
+        else:
+            score += 10
 
     return (score / max_score * 100) if max_score > 0 else 0
 
@@ -814,116 +557,74 @@ def score_practical(city, preferences):
     score = 0
     max_score = 0
 
-    # Job market
-    job_pref = preferences.get("job_market")
-    if job_pref:
-        max_score += 20
-        industries = city["major_industries"]
-        pop = city["population"]
-
-        if job_pref == "tech_hub":
-            if "Technology" in industries and pop >= 200000:
-                score += 20
-            elif pop >= 500000:
-                score += 15
-            else:
-                score += 10
-        elif job_pref == "healthcare_education":
-            if "Healthcare" in industries or "Education" in industries:
-                score += 20
-            else:
-                score += 15
-        elif job_pref == "manufacturing_trade":
-            if "Manufacturing" in industries:
-                score += 20
-            else:
-                score += 15
-        elif job_pref == "remote_work":
-            score += 20
-        elif job_pref == "retired_flexible":
-            score += 20
-
-    # Airport access
-    airport_pref = preferences.get("airport_access")
-    if airport_pref:
+    # Airport access (distance-based, independent multi-select)
+    airport_prefs = preferences.get("airport_access", [])
+    if isinstance(airport_prefs, str):
+        airport_prefs = [airport_prefs]
+    if airport_prefs:
         max_score += 25
-        is_hub = city["is_airline_hub"]
-        destinations = city["direct_flight_destinations_count"]
-        distance = city["airport_distance_miles"]
+        hub_dist = city["nearest_hub_distance_miles"]
+        airport_dist = city["airport_distance_miles"]
+        best = 5
+        if "airport_not_factor" in airport_prefs:
+            best = 25
+        if "hub_1hr" in airport_prefs and hub_dist < 60:
+            best = max(best, 25)
+        elif "hub_1hr" in airport_prefs and hub_dist < 120:
+            best = max(best, 15)
+        if "hub_2hr" in airport_prefs and hub_dist < 120:
+            best = max(best, 25)
+        elif "hub_2hr" in airport_prefs and hub_dist < 180:
+            best = max(best, 15)
+        if "regional_1hr" in airport_prefs and airport_dist < 60:
+            best = max(best, 25)
+        elif "regional_1hr" in airport_prefs and airport_dist < 120:
+            best = max(best, 15)
+        if "regional_2hr" in airport_prefs and airport_dist < 120:
+            best = max(best, 25)
+        elif "regional_2hr" in airport_prefs and airport_dist < 180:
+            best = max(best, 15)
+        score += best
 
-        if airport_pref == "major_hub":
-            if is_hub and destinations >= 100:
-                score += 25
-            elif destinations >= 50:
-                score += 18
-            else:
-                score += 10
-        elif airport_pref == "regional_airport":
-            if distance <= 60 and destinations >= 20:
-                score += 25
-            elif distance <= 100:
-                score += 18
-            else:
-                score += 10
-        elif airport_pref == "small_airport":
-            score += 25
-        elif airport_pref == "dont_fly":
-            score += 25
-
-    # Community financial health
-    health_pref = preferences.get("community_health")
-    if health_pref:
+    # Air quality (range on median_aqi)
+    aq_prefs = preferences.get("air_quality", [])
+    if isinstance(aq_prefs, str):
+        aq_prefs = [aq_prefs]
+    if aq_prefs:
         max_score += 20
-        unemployment = city["unemployment_rate"]
-        job_growth = city["job_growth_rate"]
+        aqi = city.get("median_aqi")
+        if pd.notna(aqi):
+            rq = _get_range_questions().get("air_quality", {})
+            score += _range_score(aqi, aq_prefs,
+                                  rq.get("range_map", {}), full=20, partial=14, miss=5)
+        else:
+            score += 10
 
-        if health_pref == "thriving_essential":
-            if unemployment < 4 and job_growth > 2:
-                score += 20
-            elif unemployment < 5 and job_growth > 0:
-                score += 15
-            else:
-                score += 8
-        elif health_pref == "stable_economy":
-            if unemployment < 6:
-                score += 20
-            else:
-                score += 15
-        elif health_pref == "up_and_coming":
-            if job_growth > 3:
-                score += 20
-            else:
-                score += 15
-        elif health_pref == "not_concern":
-            score += 20
-
-    # Safety
-    safety_pref = preferences.get("safety_priority")
-    if safety_pref:
+    # City fiscal health (range on debt_outstanding_pc)
+    fiscal_prefs = preferences.get("city_fiscal_health", [])
+    if isinstance(fiscal_prefs, str):
+        fiscal_prefs = [fiscal_prefs]
+    if fiscal_prefs:
         max_score += 20
-        crime = city["crime_rate_per_1000"]
+        debt = city.get("debt_outstanding_pc")
+        if pd.notna(debt):
+            rq = _get_range_questions().get("city_fiscal_health", {})
+            score += _range_score(debt, fiscal_prefs,
+                                  rq.get("range_map", {}), full=20, partial=14, miss=5)
+        else:
+            score += 10
 
-        if safety_pref == "top_priority":
-            if crime < 20:
-                score += 20
-            elif crime < 30:
-                score += 15
-            else:
-                score += 8
-        elif safety_pref == "important":
-            if crime < 35:
-                score += 20
-            else:
-                score += 12
-        elif safety_pref == "moderate_concern":
-            if crime < 45:
-                score += 20
-            else:
-                score += 15
-        elif safety_pref == "willing_tradeoff":
-            score += 20
+    # Safety priority (range on crime rate)
+    safety_prefs = preferences.get("safety_priority", [])
+    if isinstance(safety_prefs, str):
+        safety_prefs = [safety_prefs]
+    if safety_prefs:
+        max_score += 20
+        rq = _get_range_questions().get("safety_priority", {})
+        score += _range_score(city["crime_rate_per_1000"], safety_prefs,
+                              rq.get("range_map", {}), full=20, partial=14, miss=5)
 
-    # Geography (multi-select)
+    # Geography (independent multi-select)
     geo_prefs = preferences.get("geography", [])
     if geo_prefs:
         max_score += 15
@@ -931,34 +632,16 @@ def score_practical(city, preferences):
         geo_count = len(geo_prefs)
 
         if "mountains" in geo_prefs:
-            if city["has_mountains"]:
-                geo_score += 15
-            else:
-                geo_score += 5
-
+            geo_score += 15 if city["has_mountains"] else 5
         if "ocean_coast" in geo_prefs:
-            if city["has_ocean"]:
-                geo_score += 15
-            else:
-                geo_score += 5
-
+            geo_score += 15 if city["has_ocean"] else 5
         if "lakes_rivers" in geo_prefs:
-            if city["has_lakes"]:
-                geo_score += 15
-            else:
-                geo_score += 10
-
+            lake_mi = city["nearest_boatable_lake_miles"]
+            geo_score += 15 if lake_mi < 30 else (12 if lake_mi < 60 else 8)
         if "plains_prairies" in geo_prefs:
-            if city["region"] == "Midwest":
-                geo_score += 15
-            else:
-                geo_score += 10
-
+            geo_score += 15 if city["region"] == "Midwest" else 10
         if "desert" in geo_prefs:
-            if city["has_desert"]:
-                geo_score += 15
-            else:
-                geo_score += 5
+            geo_score += 15 if city["has_desert"] else 5
 
         if geo_count > 0:
             score += geo_score / geo_count
@@ -979,9 +662,15 @@ def calculate_city_scores(preferences, top_n=10):
     """
     cities_df = load_cities()
 
+    # Extract user financials for tax estimation (if provided)
+    financials = preferences.get("my_financials", {})
+    my_income = financials.get("my_income", 0)
+    my_home_value = financials.get("my_home_value", 0)
+    my_annual_expenses = financials.get("my_annual_expenses", 0)
+    has_financials = my_income > 0 or my_home_value > 0 or my_annual_expenses > 0
+
     results = []
     for _, city in cities_df.iterrows():
-        # Calculate category scores
         climate_score = score_climate(city, preferences)
         size_score = score_city_size(city, preferences)
         cost_score = score_cost_taxes(city, preferences)
@@ -990,14 +679,13 @@ def calculate_city_scores(preferences, top_n=10):
         education_score = score_education(city, preferences)
         practical_score = score_practical(city, preferences)
 
-        # Calculate total score (equal weighting)
         category_scores = [
             climate_score, size_score, cost_score, outdoor_score,
             lifestyle_score, education_score, practical_score
         ]
         total_score = np.mean([s for s in category_scores if s > 0])
 
-        results.append({
+        result = {
             "city_id": city["city_id"],
             "name": city["name"],
             "state": city["state"],
@@ -1025,11 +713,22 @@ def calculate_city_scores(preferences, top_n=10):
                 "walkability_score": city["walkability_score"],
                 "crime_rate": city["crime_rate_per_1000"],
             }
-        })
+        }
 
-    # Sort by total score descending
+        if has_financials:
+            taxes = estimate_taxes(
+                my_income, my_home_value, my_annual_expenses,
+                city["state_income_tax_rate"],
+                city["avg_property_tax_rate"],
+                city["state_sales_tax_rate"],
+                city.get("goods_rpp", 100.0),
+                city.get("cost_of_living_index", 100.0),
+            )
+            result["estimated_taxes"] = taxes
+
+        results.append(result)
+
     results.sort(key=lambda x: x["total_score"], reverse=True)
-
     return results[:top_n]
 
 
